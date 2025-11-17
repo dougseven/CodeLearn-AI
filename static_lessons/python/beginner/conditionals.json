@@ -1,9 +1,5 @@
 {
-    "lesson": "# Conditionals in Python\n\n[Write your lesson content here using Markdown]\n\n## Concept Overview\n\n[Explain the concept]\n\n## Code Examples\n\n```python\n# Example 1\n```\n\n```python\n# Example 2\n```\n\n## Common Patterns\n\n[Describe common use cases]",
-    "challenge": "Create a program that demonstrates conditionals.\n\n[Write specific requirements here]",
-    "tests": [
-        "def test_basic():\n.   # Test cases 1\n.   pass",
-        "def test_edge_case():\n.   # Test cases 2\n.   pass",
-        "def test_advanced():\n.   # Test cases 3\n.   pass"
-    ]
+    "lesson_html": "<p>Conditionals in Python are similar to C# control flow statements, allowing you to make decisions in your code. The primary conditional statement is the 'if-elif-else' block, which is comparable to C#'s if-else statements.</p>\n\n<h3>Basic Conditional Syntax</h3>\n<code>if condition:\n    # code executed if condition is True\nelse:\n    # code executed if condition is False</code>\n\n<p>In C#, this would look like:\n<code>if (condition) {\n    // code executed if condition is true\n} else {\n    // code executed if condition is false\n}</code></p>\n\n<h3>Multiple Conditions</h3>\n<p>Python uses 'elif' (else if) for multiple conditions, similar to C#'s 'else if':</p>\n<code>if first_condition:\n    # first block\nelif second_condition:\n    # second block\nelse:\n    # final block</code>\n\n<h3>Logical Operators</h3>\n<p>Python uses 'and', 'or', 'not' instead of C#'s '&&', '||', '!' operators:</p>\n<code>if x > 0 and x < 10:\n    # checks multiple conditions\n\nif not is_valid:\n    # negation works similarly</code>",
+    "challenge_py": "def classify_number(number):\n    \"\"\"Classify a number based on these rules:\n    - If number is positive and less than 10, return 'low positive'\n    - If number is between 10 and 50 (inclusive), return 'medium'\n    - If number is greater than 50, return 'high'\n    - If number is zero, return 'zero'\n    - If number is negative, return 'negative'\n    \"\"\"\n    pass",
+    "test_py": "from solution import classify_number\n\ndef test_classify_number():\n    assert classify_number(5) == 'low positive'\n    assert classify_number(25) == 'medium'\n    assert classify_number(75) == 'high'\n    assert classify_number(0) == 'zero'\n    assert classify_number(-10) == 'negative'"
 }
