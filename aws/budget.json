@@ -1,0 +1,14 @@
+{
+  "BudgetName": "CodeLearn-Monthly-Limit",
+  "BudgetLimit": {
+    "Amount": "25.00",
+    "Unit": "USD"
+  },
+  "TimeUnit": "MONTHLY",
+  "BudgetType": "COST",
+  "CostTypes": {
+    "IncludeTax": true,
+    "IncludeSubscription": true,
+    "UseBlended": false
+  }
+}

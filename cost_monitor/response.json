@@ -1,0 +1,1 @@
+{"statusCode": 500, "body": "AWS API error: An error occurred (ValidationException) when calling the GetCostAndUsage operation: Group Definition type is invalid."}
