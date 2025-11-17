@@ -19,6 +19,7 @@ CodeLearn AI is an AI-powered, budget-optimized coding education platform that p
 - **Code Execution**: Lambda with containerized Python
 
 ## 📁 Project Structure
+```
 codelearn-platform/
 ├── lesson_lambda/          # AI lesson generation
 ├── validation_lambda/      # Code validation
@@ -32,6 +33,7 @@ codelearn-platform/
 ├── tests/               # Test files
 ├── config/              # Configuration files
 └── docs/                # Documentation
+```
 
 ## 🚀 Quick Start
 
