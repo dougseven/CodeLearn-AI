@@ -1,0 +1,9 @@
+{
+    "lesson": "# Conditionals in Python\n\n[Write your lesson content here using Markdown]\n\n## Concept Overview\n\n[Explain the concept]\n\n## Code Examples\n\n```python\n# Example 1\n```\n\n```python\n# Example 2\n```\n\n## Common Patterns\n\n[Describe common use cases]",
+    "challenge": "Create a program that demonstrates conditionals.\n\n[Write specific requirements here]",
+    "tests": [
+        "def test_basic():\n.   # Test cases 1\n.   pass",
+        "def test_edge_case():\n.   # Test cases 2\n.   pass",
+        "def test_advanced():\n.   # Test cases 3\n.   pass"
+    ]
+}
