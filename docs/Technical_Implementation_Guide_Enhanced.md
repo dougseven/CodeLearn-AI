@@ -6346,13 +6346,36 @@ echo ""
 # Test 5: Frontend Accessibility
 echo "Test 5: Frontend Accessibility"
 echo "------------------------------"
-FRONTEND_HTTP=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_URL")
+# Test CloudFront HTTPS URL (primary)
+FRONTEND_HTTP=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_HTTPS_URL")
 
 if [ "$FRONTEND_HTTP" = "200" ]; then
-    echo "✅ Frontend is accessible"
-    echo "   URL: $FRONTEND_URL"
+    echo "✅ Frontend is accessible via CloudFront"
+    echo "   HTTPS URL: $FRONTEND_HTTPS_URL"
+    
+    # Also test custom domain if configured
+    if [[ -n "$FRONTEND_CUSTOM_URL" ]]; then
+        CUSTOM_HTTP=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_CUSTOM_URL")
+        if [ "$CUSTOM_HTTP" = "200" ]; then
+            echo "✅ Custom domain is accessible"
+            echo "   Custom URL: $FRONTEND_CUSTOM_URL"
+        else
+            echo "⚠️  Custom domain returned HTTP $CUSTOM_HTTP"
+            echo "   Custom URL: $FRONTEND_CUSTOM_URL"
+        fi
+    fi
 else
     echo "❌ Frontend returned HTTP $FRONTEND_HTTP"
+    echo "   HTTPS URL: $FRONTEND_HTTPS_URL"
+    
+    # Fallback test S3 static website
+    S3_HTTP=$(curl -s -o /dev/null -w "%{http_code}" "$FRONTEND_URL")
+    if [ "$S3_HTTP" = "200" ]; then
+        echo "✅ S3 static website accessible (fallback)"
+        echo "   S3 URL: $FRONTEND_URL"
+    else
+        echo "❌ S3 static website also failed: HTTP $S3_HTTP"
+    fi
 fi
 echo ""
 
@@ -6393,7 +6416,12 @@ echo "==========================="
 echo "End-to-End Test Complete"
 echo "==========================="
 echo ""
-echo "🌐 Access your platform at: $FRONTEND_URL"
+echo "🌐 Access your platform at:"
+echo "   Primary (HTTPS): $FRONTEND_HTTPS_URL"
+if [[ -n "$FRONTEND_CUSTOM_URL" ]]; then
+    echo "   Custom Domain: $FRONTEND_CUSTOM_URL"
+fi
+echo "   Fallback (HTTP): $FRONTEND_URL"
 echo "📚 API Documentation: docs/api-documentation.md"
 echo "💰 Check costs: ./check-costs.sh"
 EOF
