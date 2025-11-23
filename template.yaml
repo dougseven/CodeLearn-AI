@@ -1,0 +1,28 @@
+# SAM/CloudFormation configuration
+LessonLambda:
+  Type: AWS::Serverless::Function
+  Properties:
+    FunctionName: CodeLearn-Lesson
+    Runtime: python3.12
+    Handler: handler.lambda_handler
+    MemorySize: 512 # RIGHT-SIZED (not 1024!)
+    Timeout: 60 # Enough for Bedrock
+    ReservedConcurrentExecutions: 5 # PREVENT COST SPIKES
+    Environment:
+      Variables:
+        LESSON_CACHE_TABLE: !Ref LessonCacheTable
+        PROGRESS_TABLE: !Ref ProgressTable
+        STATIC_LESSONS_BUCKET: !Ref StaticLessonsBucket
+        EMERGENCY_MODE: 'false'
+    Policies:
+      - DynamoDBCrudPolicy:
+        TableName: !Ref LessonCacheTable
+      - DynamoDBCrudPolicy:
+        TableName: !Ref ProgressTable
+      - S3ReadPolicy:
+        BucketName: !Ref StaticLessonsBucket
+      - Statement:
+        - Effect: Allow
+          Action:
+          - bedrock:InvokeModel
+          Resource: 'arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-haiku*'
