@@ -1460,7 +1460,7 @@ Test 3: Cleaning up test item...
 **Table Name**: `codelearn-lesson-cache-dev`
 
 **Schema**:
-```json
+
 {
   "lessonKey": "python_beginner_variables",
   "content": {
@@ -1477,7 +1477,6 @@ Test 3: Cleaning up test item...
   "ttl": 1707788399,
   "hitCount": 42
 }
-```
 
 **Keys**:
 - Partition Key: `lessonKey` (String)
@@ -1491,7 +1490,7 @@ Test 3: Cleaning up test item...
 **Table Name**: `codelearn-users-dev`
 
 **Schema**:
-```json
+
 {
   "userId": "uuid-here",
   "email": "user@example.com",
@@ -1506,7 +1505,6 @@ Test 3: Cleaning up test item...
   "createdAt": 1699999999,
   "lastLogin": 1700000000
 }
-```
 
 **Keys**:
 - Partition Key: `userId` (String)
@@ -1521,7 +1519,7 @@ Test 3: Cleaning up test item...
 **Table Name**: `codelearn-progress-dev`
 
 **Schema**:
-```json
+
 {
   "userId": "uuid-here",
   "lessonId": "lesson-uuid",
@@ -1534,7 +1532,7 @@ Test 3: Cleaning up test item...
   "cached": true,
   "feedbackGenerated": true
 }
-```
+
 
 **Keys**:
 - Partition Key: `userId` (String)
@@ -1547,7 +1545,7 @@ Test 3: Cleaning up test item...
 **Table Name**: `codelearn-sessions-dev`
 
 **Schema**:
-```json
+
 {
   "sessionId": "session-uuid",
   "userId": "user-uuid",
@@ -1555,7 +1553,7 @@ Test 3: Cleaning up test item...
   "createdAt": 1700000000,
   "expiresAt": 1700086400
 }
-```
+
 
 **Keys**:
 - Partition Key: `sessionId` (String)
