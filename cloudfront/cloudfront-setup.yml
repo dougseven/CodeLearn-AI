@@ -1,0 +1,113 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFront distribution for CodeLearn frontend with HTTPS support'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: 'codelearn'
+    Description: 'Project name for resource naming'
+  
+  Environment:
+    Type: String
+    Default: 'dev'
+    Description: 'Environment (dev, prod)'
+  
+  S3BucketName:
+    Type: String
+    Description: 'S3 bucket containing the frontend files'
+  
+  DomainName:
+    Type: String
+    Default: ''
+    Description: 'Optional: Custom domain name (e.g., app.example.com). Leave empty to use CloudFront domain.'
+  
+  CertificateArn:
+    Type: String
+    Default: ''
+    Description: 'Optional: ACM certificate ARN for custom domain. Required if DomainName is provided.'
+
+Conditions:
+  HasCustomDomain: !Not [!Equals [!Ref DomainName, '']]
+  HasCertificate: !Not [!Equals [!Ref CertificateArn, '']]
+
+Resources:
+  # CloudFront Origin Access Identity for S3 bucket access
+  CloudFrontOAI:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub 'OAI for ${ProjectName}-${Environment}'
+
+  # Note: S3 Bucket Policy will be updated manually to avoid conflicts with existing policies
+
+  # CloudFront Distribution
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Aliases: 
+          - !If [HasCustomDomain, !Ref DomainName, !Ref 'AWS::NoValue']
+        
+        Origins:
+          - Id: S3Origin
+            DomainName: !Sub '${S3BucketName}.s3.${AWS::Region}.amazonaws.com'
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOAI}'
+        
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # Managed-CachingOptimized
+          OriginRequestPolicyId: 88a5eaf4-2fd4-4709-b370-b4c650ea3fcf  # Managed-CORS-S3Origin
+          ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03  # Managed-SecurityHeadersPolicy
+          
+        DefaultRootObject: index.html
+        
+        # Custom error pages for SPA routing
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 300
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 300
+        
+        ViewerCertificate:
+          AcmCertificateArn: !If [HasCertificate, !Ref CertificateArn, !Ref 'AWS::NoValue']
+          SslSupportMethod: !If [HasCertificate, 'sni-only', !Ref 'AWS::NoValue']
+          MinimumProtocolVersion: !If [HasCertificate, 'TLSv1.2_2021', !Ref 'AWS::NoValue']
+          CloudFrontDefaultCertificate: !If [HasCertificate, !Ref 'AWS::NoValue', true]
+        
+        Enabled: true
+        HttpVersion: http2
+        PriceClass: PriceClass_100  # Use only North America and Europe edge locations
+        
+        Comment: !Sub '${ProjectName}-${Environment} frontend distribution'
+
+Outputs:
+  CloudFrontDistributionId:
+    Description: 'CloudFront Distribution ID'
+    Value: !Ref CloudFrontDistribution
+    Export:
+      Name: !Sub '${AWS::StackName}-DistributionId'
+  
+  CloudFrontDomainName:
+    Description: 'CloudFront Distribution Domain Name'
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub '${AWS::StackName}-DomainName'
+  
+  CloudFrontURL:
+    Description: 'CloudFront HTTPS URL'
+    Value: !Sub 'https://${CloudFrontDistribution.DomainName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-URL'
+  
+  CustomDomainURL:
+    Condition: HasCustomDomain
+    Description: 'Custom Domain HTTPS URL'
+    Value: !Sub 'https://${DomainName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-CustomURL'

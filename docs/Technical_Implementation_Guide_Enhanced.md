@@ -5955,63 +5955,222 @@ echo "Access your app at: $FRONTEND_URL"
 - Check API calls are going to correct endpoints
 - Verify tokens are being passed
 
-### Step 10.5: Set Up CloudFront (Optional - for HTTPS)
+### Step 10.5: Set Up HTTPS Frontend with CloudFront
 
-**What you're doing:** Adding a CDN with HTTPS support.
+**What you're doing:** Setting up a secure HTTPS frontend with CloudFront CDN and enabling proper Cognito OAuth.
+
+**Why this is important:** Cognito OAuth requires HTTPS redirect URLs. S3 static hosting only supports HTTP, so we need CloudFront for HTTPS support.
+
+#### Option 1: Quick Setup (CloudFront Default Domain)
 
 ```bash
-# Create CloudFront distribution (this takes 15-20 minutes)
-cat > /tmp/cloudfront-config.json << EOF
+# Run the automated CloudFront setup script
+./tools/create-cloudfront-simple.sh
+```
+
+#### Option 2: Manual Setup
+
+```bash
+# 1. Create Origin Access Identity for secure S3 access
+OAI_RESPONSE=$(aws cloudfront create-cloud-front-origin-access-identity \
+    --cloud-front-origin-access-identity-config \
+    "CallerReference=$(date +%s),Comment=CodeLearn OAI for ${FRONTEND_BUCKET}")
+
+OAI_ID=$(echo "$OAI_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['CloudFrontOriginAccessIdentity']['Id'])")
+echo "✅ Created OAI: $OAI_ID"
+
+# 2. Update S3 bucket policy for CloudFront access
+cat << EOF | aws s3api put-bucket-policy --bucket "$FRONTEND_BUCKET" --policy file:///dev/stdin
 {
-  "CallerReference": "codelearn-${AWS_ACCOUNT_ID}",
-  "Comment": "CodeLearn Frontend Distribution",
-  "DefaultCacheBehavior": {
-    "TargetOriginId": "S3-${FRONTEND_BUCKET}",
-    "ViewerProtocolPolicy": "redirect-to-https",
-    "AllowedMethods": {
-      "Quantity": 2,
-      "Items": ["GET", "HEAD"]
-    },
-    "ForwardedValues": {
-      "QueryString": false,
-      "Cookies": {"Forward": "none"}
-    },
-    "MinTTL": 0,
-    "DefaultTTL": 86400,
-    "MaxTTL": 31536000,
-    "Compress": true
-  },
-  "Origins": {
-    "Quantity": 1,
-    "Items": [{
-      "Id": "S3-${FRONTEND_BUCKET}",
-      "DomainName": "${FRONTEND_BUCKET}.s3.${AWS_REGION}.amazonaws.com",
-      "S3OriginConfig": {
-        "OriginAccessIdentity": ""
-      }
-    }]
-  },
-  "Enabled": true,
-  "DefaultRootObject": "index.html",
-  "CustomErrorResponses": {
-    "Quantity": 1,
-    "Items": [{
-      "ErrorCode": 404,
-      "ResponsePagePath": "/index.html",
-      "ResponseCode": "200",
-      "ErrorCachingMinTTL": 300
-    }]
-  }
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowCloudFrontAccess",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${OAI_ID}"
+            },
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::${FRONTEND_BUCKET}/*"
+        }
+    ]
 }
 EOF
 
-aws cloudfront create-distribution \
-    --distribution-config file:///tmp/cloudfront-config.json \
-    --query 'Distribution.DomainName' \
-    --output text
+# 3. Create CloudFront distribution (15-20 minutes deployment time)
+cat > /tmp/distribution-config.json << EOF
+{
+    "CallerReference": "codelearn-$(date +%s)",
+    "Comment": "CodeLearn Frontend Distribution",
+    "DefaultRootObject": "index.html",
+    "Origins": {
+        "Quantity": 1,
+        "Items": [
+            {
+                "Id": "S3-${FRONTEND_BUCKET}",
+                "DomainName": "${FRONTEND_BUCKET}.s3.${AWS_REGION}.amazonaws.com",
+                "S3OriginConfig": {
+                    "OriginAccessIdentity": "origin-access-identity/cloudfront/${OAI_ID}"
+                }
+            }
+        ]
+    },
+    "DefaultCacheBehavior": {
+        "TargetOriginId": "S3-${FRONTEND_BUCKET}",
+        "ViewerProtocolPolicy": "redirect-to-https",
+        "TrustedSigners": {
+            "Enabled": false,
+            "Quantity": 0
+        },
+        "ForwardedValues": {
+            "QueryString": false,
+            "Cookies": {
+                "Forward": "none"
+            }
+        },
+        "MinTTL": 0,
+        "Compress": true
+    },
+    "CustomErrorResponses": {
+        "Quantity": 2,
+        "Items": [
+            {
+                "ErrorCode": 403,
+                "ResponsePagePath": "/index.html",
+                "ResponseCode": "200",
+                "ErrorCachingMinTTL": 300
+            },
+            {
+                "ErrorCode": 404,
+                "ResponsePagePath": "/index.html",
+                "ResponseCode": "200",
+                "ErrorCachingMinTTL": 300
+            }
+        ]
+    },
+    "Enabled": true,
+    "PriceClass": "PriceClass_100",
+    "ViewerCertificate": {
+        "CloudFrontDefaultCertificate": true
+    }
+}
+EOF
 
-echo "⏳ CloudFront distribution creating (takes 15-20 minutes)"
-echo "You'll get a domain like: d1234abcd.cloudfront.net"
+DISTRIBUTION_RESPONSE=$(aws cloudfront create-distribution --distribution-config file:///tmp/distribution-config.json)
+
+DISTRIBUTION_ID=$(echo "$DISTRIBUTION_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['Distribution']['Id'])")
+CLOUDFRONT_DOMAIN=$(echo "$DISTRIBUTION_RESPONSE" | python3 -c "import sys, json; print(json.load(sys.stdin)['Distribution']['DomainName'])")
+CLOUDFRONT_URL="https://$CLOUDFRONT_DOMAIN"
+
+# 4. Save configuration
+cat >> config/dev-config.sh << EOF
+
+# CloudFront Configuration
+export CLOUDFRONT_DISTRIBUTION_ID="$DISTRIBUTION_ID"
+export CLOUDFRONT_DOMAIN="$CLOUDFRONT_DOMAIN"
+export FRONTEND_HTTPS_URL="$CLOUDFRONT_URL"
+EOF
+
+echo "✅ CloudFront distribution created: $CLOUDFRONT_URL"
+echo "⏳ Distribution deploying globally (10-15 minutes)..."
+```
+
+#### Update Cognito for HTTPS OAuth
+
+```bash
+# Update Cognito app client with HTTPS redirect URLs
+./tools/update-cognito-https.sh
+
+# Or manually:
+source config/dev-config.sh
+aws cognito-idp update-user-pool-client \
+    --user-pool-id $USER_POOL_ID \
+    --client-id $APP_CLIENT_ID \
+    --explicit-auth-flows "ALLOW_USER_PASSWORD_AUTH" "ALLOW_USER_SRP_AUTH" "ALLOW_REFRESH_TOKEN_AUTH" \
+    --callback-urls "${FRONTEND_HTTPS_URL}" "${FRONTEND_HTTPS_URL}/auth/callback" "http://localhost:3000/auth/callback" \
+    --logout-urls "${FRONTEND_HTTPS_URL}" "http://localhost:3000" \
+    --supported-identity-providers "COGNITO" \
+    --allowed-o-auth-flows "code" \
+    --allowed-o-auth-scopes "openid" "email" "profile" \
+    --allowed-o-auth-flows-user-pool-client
+
+echo "✅ Cognito updated with HTTPS URLs"
+```
+
+#### Testing the HTTPS Frontend
+
+```bash
+# Check CloudFront deployment status
+./tools/test-https-frontend.sh
+
+# Manual testing
+source config/dev-config.sh
+
+# 1. Check CloudFront status
+aws cloudfront get-distribution --id $CLOUDFRONT_DISTRIBUTION_ID --query 'Distribution.Status'
+
+# 2. Test HTTPS access
+curl -I $FRONTEND_HTTPS_URL
+
+# 3. OAuth Login URL
+echo "OAuth URL: https://$COGNITO_DOMAIN/login?client_id=$APP_CLIENT_ID&response_type=code&scope=openid+email+profile&redirect_uri=$FRONTEND_HTTPS_URL"
+```
+
+#### Frontend Features
+
+The updated frontend now supports:
+- **Smart Authentication**: OAuth for HTTPS, form fallback for HTTP
+- **Proper Token Exchange**: Converts OAuth codes to JWT tokens
+- **Secure Storage**: Tokens stored in localStorage
+- **Error Handling**: Graceful fallbacks for authentication failures
+
+Test with credentials:
+- Email: `test@example.com`
+- Password: `TestPassword123!`
+
+#### Available Tools for HTTPS Setup
+
+The following helper scripts are available in the `tools/` directory:
+
+1. **`./tools/create-cloudfront-simple.sh`** - Automated CloudFront setup
+   - Creates Origin Access Identity
+   - Updates S3 bucket policy
+   - Creates CloudFront distribution
+   - Saves configuration to config file
+
+2. **`./tools/update-cognito-https.sh`** - Updates Cognito for HTTPS
+   - Adds HTTPS redirect URLs to Cognito app client
+   - Maintains localhost URLs for development
+   - Shows OAuth login URL for testing
+
+3. **`./tools/test-https-frontend.sh`** - Tests HTTPS frontend
+   - Checks CloudFront deployment status
+   - Tests frontend accessibility
+   - Provides OAuth login URLs
+   - Shows test instructions
+
+4. **`./tools/test-auth.sh`** - Tests Cognito authentication
+   - Direct username/password authentication
+   - JWT token decoding and display
+   - Token storage for API testing
+
+#### Custom Domain Setup (Optional)
+
+For production, you may want to use a custom domain:
+
+```bash
+# 1. Purchase/configure domain in Route 53
+aws route53 create-hosted-zone --name yourdomain.com --caller-reference $(date +%s)
+
+# 2. Request ACM certificate (must be in us-east-1 for CloudFront)
+aws acm request-certificate \
+    --domain-name app.yourdomain.com \
+    --validation-method DNS \
+    --region us-east-1
+
+# 3. Add DNS validation records (check ACM console)
+# 4. Update CloudFront distribution with custom domain and certificate
+# 5. Create CNAME record pointing to CloudFront domain
 ```
 
 ### Verification
@@ -6037,17 +6196,25 @@ echo "Open this URL: $FRONTEND_URL"
 ```bash
 git add frontend/
 git add tools/configure-frontend.sh
+git add tools/create-cloudfront-simple.sh
+git add tools/update-cognito-https.sh
+git add tools/test-https-frontend.sh
+git add cloudfront/
 
-git commit -m "Deploy frontend application
+git commit -m "Deploy HTTPS frontend application with CloudFront
 
 - Created single-page application with lesson viewer
 - Integrated with API Gateway endpoints
-- Configured Cognito authentication
+- Configured Cognito OAuth authentication
 - Deployed to S3 with static hosting
-- Added CodeMirror for code editing
-- Implemented lesson rendering and code validation
+- Set up CloudFront with HTTPS support
+- Added smart authentication (OAuth + fallback)
+- Created CloudFront Origin Access Identity
+- Updated Cognito with HTTPS redirect URLs
+- Added automated setup and testing scripts
 
-Frontend URL: $FRONTEND_URL"
+S3 Frontend URL: $FRONTEND_URL
+HTTPS Frontend URL: $FRONTEND_HTTPS_URL"
 
 git push
 ```
@@ -6055,12 +6222,18 @@ git push
 ### What You Just Accomplished
 
 ✅ Built complete frontend application  
-✅ Integrated API and Cognito  
+✅ Integrated API and Cognito with OAuth  
 ✅ Deployed to S3 with static hosting  
+✅ Set up CloudFront with HTTPS support  
+✅ Configured secure authentication flow  
+✅ Created automated setup scripts  
 ✅ Tested end-to-end user flow  
 ✅ Set up code editor and lesson rendering  
 
-**Cost Impact:** FREE (within CloudFront free tier)
+**Cost Impact:** 
+- S3 Static Hosting: FREE (within free tier)
+- CloudFront: FREE for first 1TB/month + 10M requests
+- Route 53 (if using custom domain): $0.50/month per hosted zone
 
 ---
 
