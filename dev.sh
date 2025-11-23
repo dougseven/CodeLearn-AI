@@ -4,6 +4,20 @@
 
 source config/dev-config.sh
 
+# Safety check for deployment
+check_deployment_target() {
+    if [ -z "$AWS_ACCOUNT_ID" ] || [ -z "$AWS_REGION" ]; then
+        echo -e "${RED}❌ Configuration not loaded${NC}"
+        echo "Run: source config/dev-config.sh"
+        return 1
+    fi
+    
+    echo -e "${YELLOW}Deployment Target:${NC}"
+    echo "  Account: $AWS_ACCOUNT_ID"
+    echo "  Region: $AWS_REGION"
+    echo ""
+}
+
 # Colors
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
@@ -54,6 +68,28 @@ print_usage() {
 # Quick deploy functions
 deploy() {
     echo -e "${BLUE}Deploying all components...${NC}"
+    
+    # Verify configuration is loaded
+    if [ -z "$STATIC_LESSONS_BUCKET" ] || [ -z "$FRONTEND_BUCKET" ]; then
+        echo -e "${RED}❌ Configuration not loaded!${NC}"
+        echo "Run: source config/dev-config.sh"
+        return 1
+    fi
+    
+    # Show where we're deploying to
+    echo "Deploying to:"
+    echo "  Region: $AWS_REGION"
+    echo "  Account: $AWS_ACCOUNT_ID"
+    echo "  Static Lessons: s3://$STATIC_LESSONS_BUCKET"
+    echo "  Frontend: s3://$FRONTEND_BUCKET"
+    echo ""
+    read -p "Continue? (y/n): " confirm
+    
+    if [ "$confirm" != "y" ]; then
+        echo "Cancelled"
+        return 0
+    fi
+    
     ./tools/update-lambda.sh all
     aws s3 sync static_lessons/ s3://$STATIC_LESSONS_BUCKET/static/ --delete --quiet
     aws s3 sync frontend/ s3://$FRONTEND_BUCKET/ --delete --quiet

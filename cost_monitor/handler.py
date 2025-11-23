@@ -2,6 +2,7 @@ import boto3
 import os
 import logging
 from datetime import datetime, timedelta
+from calendar import monthrange
 from botocore.exceptions import ClientError, NoCredentialsError, BotoCoreError
 
 # Configure logging
@@ -27,8 +28,17 @@ def validate_environment():
     logger.info(f"Cost Threshold: ${COST_THRESHOLD}")
 
 
+def validate_lambda_inputs(event, context):
+    """Validate Lambda event and context parameters"""
+    if event is None:
+        raise ValueError("Lambda event cannot be None")
+    if context is None:
+        raise ValueError("Lambda context cannot be None")
+    logger.info(f"Lambda request ID: {getattr(context, 'aws_request_id', 'unknown')}")
+
+
 def lambda_handler(event, context):
-    """Check daily costs and alert if trending over budget
+    """Check yesterday's costs and alert if monthly projection exceeds budget
     
     Args:
         event: Lambda event object
@@ -38,20 +48,21 @@ def lambda_handler(event, context):
         dict: Response with status code and cost information
     """
     try:
-        # Validate environment
+        # Validate inputs and environment
+        validate_lambda_inputs(event, context)
         validate_environment()
         
         # Calculate date range for yesterday's costs
-        end = datetime.now().date()
-        start = end - timedelta(days=1)
+        today = datetime.now().date()
+        yesterday = today - timedelta(days=1)
         
-        logger.info(f"Fetching costs for {start.strftime('%Y-%m-%d')}")
+        logger.info(f"Fetching costs for {yesterday.strftime('%Y-%m-%d')}")
         
         # Get cost data from AWS Cost Explorer
         response = ce.get_cost_and_usage(
             TimePeriod={
-                'Start': start.strftime('%Y-%m-%d'),
-                'End': end.strftime('%Y-%m-%d')
+                'Start': yesterday.strftime('%Y-%m-%d'),
+                'End': today.strftime('%Y-%m-%d')
             },
             Granularity='DAILY',
             Metrics=['UnblendedCost'],
@@ -65,10 +76,10 @@ def lambda_handler(event, context):
             'body': f'AWS API error: {str(e)}'
         }
     except ValueError as e:
-        logger.error(f"Configuration error: {e}")
+        logger.error(f"Validation error: {e}")
         return {
-            'statusCode': 400,
-            'body': f'Configuration error: {str(e)}'
+            'statusCode': 500,
+            'body': f'Validation error: {str(e)}'
         }
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
@@ -90,42 +101,47 @@ def lambda_handler(event, context):
                     breakdown.append(f"{service}: ${cost:.2f}")
                     total += cost
 
-        monthly_projection = total * 30
+        # Calculate monthly projection based on actual days in current month
+        current_month = today.month
+        current_year = today.year
+        days_in_month = monthrange(current_year, current_month)[1]
+        monthly_projection = total * days_in_month
         
-        logger.info(f"Daily cost: ${total:.2f}, Monthly projection: ${monthly_projection:.2f}")
+        logger.info(f"Daily cost: ${total:.2f}, Monthly projection: ${monthly_projection:.2f} (based on {days_in_month} days)")
 
         # Create status message
-        message = f"""
-CodeLearn Daily Cost Report
+        budget_status = "⚠️ OVER BUDGET" if monthly_projection > MONTHLY_BUDGET else "✅ Within Budget"
+        costs_display = chr(10).join(breakdown) if breakdown else f'No significant costs (< ${COST_THRESHOLD})'
+        
+        message = f"""CodeLearn Daily Cost Report
 ===========================
-Date: {start.strftime('%Y-%m-%d')}
+Date: {yesterday.strftime('%Y-%m-%d')}
 
 Yesterday's Costs:
-{chr(10).join(breakdown) if breakdown else 'No significant costs (< $' + str(COST_THRESHOLD) + ')'}
+{costs_display}
 
 TOTAL: ${total:.2f}
-Monthly Projection: ${monthly_projection:.2f}
+Monthly Projection: ${monthly_projection:.2f} ({days_in_month} days)
 Budget: ${MONTHLY_BUDGET:.2f}
 
-Budget Status: {"⚠️ OVER BUDGET" if monthly_projection > MONTHLY_BUDGET else "✅ Within Budget"}
-        """
+Budget Status: {budget_status}"""
 
         logger.info("Cost report generated successfully")
 
         # Send alert if over budget
         if monthly_projection > MONTHLY_BUDGET:
             try:
-                sns.publish(
+                sns_response = sns.publish(
                     TopicArn=SNS_TOPIC,
                     Subject='⚠️ CodeLearn: Cost Alert - Over Budget!',
                     Message=message
                 )
-                logger.warning(f"Budget alert sent - projection ${monthly_projection:.2f} exceeds budget ${MONTHLY_BUDGET:.2f}")
+                logger.warning(f"Budget alert sent successfully (MessageId: {sns_response.get('MessageId', 'unknown')}) - projection ${monthly_projection:.2f} exceeds budget ${MONTHLY_BUDGET:.2f}")
             except ClientError as e:
-                logger.error(f"Failed to send SNS alert: {e}")
-                # Don't fail the function if SNS fails, just log the error
+                logger.error(f"Failed to send SNS alert - this is a critical issue that needs attention: {e}")
+                logger.error(f"Alert details - Topic: {SNS_TOPIC}, Projection: ${monthly_projection:.2f}, Budget: ${MONTHLY_BUDGET:.2f}")
         else:
-            logger.info(f"Within budget - no alert needed")
+            logger.info(f"Within budget - no alert needed (${monthly_projection:.2f} <= ${MONTHLY_BUDGET:.2f})")
 
         return {
             'statusCode': 200,
