@@ -4772,7 +4772,7 @@ Use the provided test script:
 ```bash
 ./tools/test-api.sh
 ```
-```
+
 
 **Save the file**
 
@@ -4895,7 +4895,7 @@ USER_POOL_ID=$(aws cognito-idp create-user-pool \
             "RequireUppercase": true,
             "RequireLowercase": true,
             "RequireNumbers": true,
-            "RequireSymbols": false
+            "RequireSymbols": true
         }
     }' \
     --schema '[
@@ -4935,8 +4935,8 @@ APP_CLIENT_ID=$(aws cognito-idp create-user-pool-client \
     --no-generate-secret \
     --allowed-o-auth-flows code \
     --allowed-o-auth-scopes openid email profile \
-    --callback-urls "${FRONTEND_URL}" "http://localhost:3000" \
-    --logout-urls "${FRONTEND_URL}" "http://localhost:3000" \
+    --callback-urls "https://localhost:3000" "http://localhost:3000" \
+    --logout-urls "https://localhost:3000" "http://localhost:3000" \
     --supported-identity-providers COGNITO \
     --query 'UserPoolClient.ClientId' \
     --output text)
@@ -5031,7 +5031,7 @@ echo "⏭  Skipping Google OAuth (can be added later)"
 ```bash
 # Create a test user
 TEST_EMAIL="test@example.com"
-TEST_PASSWORD="Test1234!"
+TEST_PASSWORD="TestPassword123!"
 
 aws cognito-idp admin-create-user \
     --user-pool-id $USER_POOL_ID \
@@ -5066,9 +5066,20 @@ echo "================================="
 echo ""
 
 # Prompt for credentials
-read -p "Email: " EMAIL
-read -s -p "Password: " PASSWORD
+echo -n "Email: "
+read EMAIL
+echo -n "Password: "
+read -s PASSWORD
 echo ""
+
+# Debug: Check if variables are set
+if [[ -z "$EMAIL" || -z "$PASSWORD" ]]; then
+    echo "❌ Error: Email or password not provided"
+    echo "Email length: ${#EMAIL}"
+    exit 1
+fi
+
+echo "Testing authentication for: $EMAIL"
 
 # Initiate auth
 RESPONSE=$(aws cognito-idp initiate-auth \
@@ -5088,7 +5099,13 @@ if echo "$RESPONSE" | grep -q "AccessToken"; then
     
     # Decode ID token to show user info
     echo "User Info:"
-    echo "$ID_TOKEN" | cut -d. -f2 | base64 -d 2>/dev/null | python3 -m json.tool | grep -E '"email"|"name"|"sub"'
+    TOKEN_PAYLOAD=$(echo "$ID_TOKEN" | cut -d. -f2)
+    # Add padding if needed for base64 decoding
+    case $((${#TOKEN_PAYLOAD} % 4)) in
+        2) TOKEN_PAYLOAD="${TOKEN_PAYLOAD}==";;
+        3) TOKEN_PAYLOAD="${TOKEN_PAYLOAD}=";;
+    esac
+    echo "$TOKEN_PAYLOAD" | base64 -d 2>/dev/null | python3 -m json.tool | grep -E '"email"|"name"|"sub"'
     
     echo ""
     echo "Access Token (first 50 chars):"
@@ -5112,7 +5129,7 @@ chmod +x tools/test-auth.sh
 ```bash
 ./tools/test-auth.sh
 # Enter: test@example.com
-# Enter: Test1234!
+# Enter: Test1234&
 ```
 
 ### Step 9.7: Create Auth Lambda (Handles OAuth Callbacks)
@@ -5128,78 +5145,192 @@ import boto3
 import time
 import hashlib
 import secrets
-from typing import Dict, Any
+import logging
+from typing import Dict, Any, Optional
+from botocore.exceptions import ClientError
+
+# Configure logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# Constants
+SESSION_EXPIRY_HOURS = 24
+SESSION_EXPIRY_SECONDS = SESSION_EXPIRY_HOURS * 60 * 60
 
 dynamodb = boto3.resource('dynamodb')
 users_table = dynamodb.Table(os.environ.get('USERS_TABLE', 'codelearn-users-dev'))
 sessions_table = dynamodb.Table(os.environ.get('SESSIONS_TABLE', 'codelearn-sessions-dev'))
 
 
+def validate_claims(claims: Dict[str, Any]) -> Optional[str]:
+    """Validate required claims data."""
+    if not claims:
+        return "No claims provided"
+    
+    user_id = claims.get('sub')
+    email = claims.get('email')
+    
+    if not user_id or not isinstance(user_id, str) or len(user_id.strip()) == 0:
+        return "Invalid or missing user ID"
+    
+    if not email or not isinstance(email, str) or '@' not in email:
+        return "Invalid or missing email"
+    
+    return None
+
+
+def hash_token(token: str) -> str:
+    """Hash a session token for secure storage."""
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def cleanup_expired_sessions(user_id: str, current_time: int) -> None:
+    """Remove expired sessions for a user."""
+    try:
+        # Query for user's sessions
+        response = sessions_table.query(
+            IndexName='user-id-index',  # Assuming this GSI exists
+            KeyConditionExpression='user_id = :user_id',
+            FilterExpression='expires_at < :current_time',
+            ExpressionAttributeValues={
+                ':user_id': user_id,
+                ':current_time': current_time
+            }
+        )
+        
+        # Delete expired sessions
+        for item in response.get('Items', []):
+            sessions_table.delete_item(
+                Key={'session_id': item['session_id']}
+            )
+            logger.info(f"Deleted expired session: {item['session_id']}")
+            
+    except ClientError as e:
+        logger.warning(f"Session cleanup failed for user {user_id}: {e}")
+        # Don't fail the auth process if cleanup fails
+
+
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
-    Handle OAuth callback and create user session
+    Handle OAuth callback and create user session.
     """
     try:
         # Get user info from Cognito authorizer
         claims = event.get('requestContext', {}).get('authorizer', {}).get('claims', {})
-        
-        if not claims:
-            return error_response(401, 'Unauthorized')
+
+        # Validate claims
+        validation_error = validate_claims(claims)
+        if validation_error:
+            logger.warning(f"Claims validation failed: {validation_error}")
+            return error_response(401, 'Unauthorized: Invalid claims')
         
         # Extract user information
-        user_id = claims.get('sub')
-        email = claims.get('email')
-        name = claims.get('name', email.split('@')[0])
-        
+        user_id = claims.get('sub').strip()
+        email = claims.get('email').strip().lower()
+        name = claims.get('name', email.split('@')[0]).strip()
+
         # Create or update user in database
         now = int(time.time())
         
-        users_table.put_item(Item={
-            'userId': user_id,
-            'email': email,
-            'name': name,
-            'createdAt': now,
-            'lastLogin': now,
-            'preferences': {}
-        })
+        try:
+            # Try to update existing user (preserve created_at and preferences)
+            users_table.update_item(
+                Key={'user_id': user_id},
+                UpdateExpression='SET email = :email, #name = :name, last_login = :last_login',
+                ExpressionAttributeNames={'#name': 'name'},  # 'name' is a reserved keyword
+                ExpressionAttributeValues={
+                    ':email': email,
+                    ':name': name,
+                    ':last_login': now
+                }
+            )
+            logger.info(f"Updated existing user: {user_id}")
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'ValidationException':
+                # User doesn't exist, create new one
+                try:
+                    users_table.put_item(
+                        Item={
+                            'user_id': user_id,
+                            'email': email,
+                            'name': name,
+                            'created_at': now,
+                            'last_login': now,
+                            'preferences': {}
+                        },
+                        ConditionExpression='attribute_not_exists(user_id)'
+                    )
+                    logger.info(f"Created new user: {user_id}")
+                except ClientError as ce:
+                    if ce.response['Error']['Code'] == 'ConditionalCheckFailedException':
+                        # Race condition: user was created between update and put
+                        logger.info(f"User created concurrently, updating: {user_id}")
+                        users_table.update_item(
+                            Key={'user_id': user_id},
+                            UpdateExpression='SET email = :email, #name = :name, last_login = :last_login',
+                            ExpressionAttributeNames={'#name': 'name'},
+                            ExpressionAttributeValues={
+                                ':email': email,
+                                ':name': name,
+                                ':last_login': now
+                            }
+                        )
+                    else:
+                        raise ce
+            else:
+                raise e
+
+        # Clean up expired sessions for this user
+        cleanup_expired_sessions(user_id, now)
         
         # Create session
         session_id = secrets.token_urlsafe(32)
         session_token = secrets.token_urlsafe(64)
+        session_token_hash = hash_token(session_token)
         
-        sessions_table.put_item(Item={
-            'sessionId': session_id,
-            'userId': user_id,
-            'token': session_token,
-            'createdAt': now,
-            'expiresAt': now + (24 * 3600)  # 24 hours
-        })
-        
+        try:
+            sessions_table.put_item(
+                Item={
+                    'session_id': session_id,
+                    'user_id': user_id,
+                    'token_hash': session_token_hash,
+                    'created_at': now,
+                    'expires_at': now + SESSION_EXPIRY_SECONDS
+                }
+            )
+            logger.info(f"Created session for user: {user_id}")
+        except ClientError as e:
+            logger.error(f"Failed to create session for user {user_id}: {e}")
+            return error_response(500, 'Failed to create session')
+
         return {
             'statusCode': 200,
             'headers': cors_headers(),
             'body': json.dumps({
-                'sessionId': session_id,
-                'token': session_token,
+                'session_id': session_id,
+                'session_token': session_token,
                 'userId': user_id,
                 'email': email,
                 'name': name
             })
         }
-        
+    
+    except ClientError as e:
+        logger.error(f"DynamoDB error during authentication: {e.response['Error']['Code']}")
+        return error_response(500, 'Authentication service unavailable')
     except Exception as e:
-        print(f"Auth error: {str(e)}")
+        logger.error(f"Unexpected error during authentication: {str(e)}")
         import traceback
-        traceback.print_exc()
-        return error_response(500, f'Authentication failed: {str(e)}')
-
+        logger.error(traceback.format_exc())
+        return error_response(500, 'Authentication failed')
+    
 
 def cors_headers() -> Dict[str, str]:
     return {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-        'Access-Control-Allow-Methods': 'GET,POST,OPTIONS'
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
     }
 
 
@@ -5207,8 +5338,9 @@ def error_response(status_code: int, message: str) -> Dict[str, Any]:
     return {
         'statusCode': status_code,
         'headers': cors_headers(),
-        'body': json.dumps({'error': message})
+        'body': json.dumps({'message': message})
     }
+
 ```
 
 **Save the file**
@@ -5409,7 +5541,8 @@ aws cognito-idp create-identity-provider \
 **"Invalid client"**
 - Check App Client ID is correct
 - Check User Pool ID is correct
-```
+
+### --- End of markdown ---
 
 **Save the file**
 
