@@ -9,6 +9,8 @@ config/prod-config.sh
 config/*-config.sh
 !config/*.template.sh        # Templates are OK
 
+notifications.json
+
 # AWS Credentials and outputs
 # ============================
 cognito-config.txt
@@ -111,3 +113,4 @@ htmlcov/
 # - Code in lesson_lambda/, validation_lambda/, etc.
 # - frontend/ code
 # - static_lessons/ (your lesson content)
+
