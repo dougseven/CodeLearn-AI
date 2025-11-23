@@ -1,0 +1,95 @@
+{
+  "family": "codelearn-validator",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT:role/CodelearnValidatorTaskRole",
+  
+  "containerDefinitions": [
+    {
+      "name": "validator",
+      "image": "ACCOUNT.dkr.ecr.REGION.amazonaws.com/codelearn-validator:latest",
+      "essential": true,
+      
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/codelearn-validator",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      
+      "environment": [
+        {
+          "name": "PYTHONDONTWRITEBYTECODE",
+          "value": "1"
+        },
+        {
+          "name": "PYTHONUNBUFFERED", 
+          "value": "1"
+        }
+      ],
+      
+      "resourceRequirements": [
+        {
+          "type": "InferenceAccelerator",
+          "value": ""
+        }
+      ],
+      
+      "ulimits": [
+        {
+          "name": "nproc",
+          "softLimit": 64,
+          "hardLimit": 64
+        },
+        {
+          "name": "nofile",
+          "softLimit": 1024,
+          "hardLimit": 1024
+        }
+      ],
+      
+      "linuxParameters": {
+        "capabilities": {
+          "drop": [
+            "ALL"
+          ]
+        },
+        "devices": [],
+        "initProcessEnabled": true,
+        "maxSwap": 0,
+        "swappiness": 0,
+        "tmpfs": [
+          {
+            "containerPath": "/tmp",
+            "size": 100,
+            "mountOptions": ["noexec", "nosuid", "nodev"]
+          }
+        ]
+      },
+      
+      "readonlyRootFilesystem": true,
+      "user": "validator:validator",
+      
+      "mountPoints": [],
+      "volumesFrom": [],
+      "portMappings": [],
+      
+      "stopTimeout": 30
+    }
+  ],
+  
+  "volumes": [],
+  
+  "placementConstraints": [],
+  "tags": [
+    {
+      "key": "Purpose",
+      "value": "SecureCodeValidation"
+    }
+  ]
+}

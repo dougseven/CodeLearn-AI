@@ -1,9 +1,9 @@
 {
-  "lesson": "# Conditionals in Python\n\n## Introduction\n\n[Write a brief introduction to conditionals]\n\n## Concept Overview\n\n[Explain the main concept]\n\n## Syntax\n\n```python\n# Example 1: Basic usage\n```\n\n```python\n# Example 2: Common pattern\n```\n\n## Key Points\n\n- Point 1\n- Point 2\n- Point 3\n\n## Common Mistakes\n\n[Describe common pitfalls]\n\n## Practice\n\nTry these examples yourself:\n\n```python\n# Exercise hint\n```\n",
-  "challenge": "Create a program that demonstrates conditionals.\n\nRequirements:\n1. [Requirement 1]\n2. [Requirement 2]\n3. [Requirement 3]\n\nYour code should handle edge cases and follow best practices.\n",
-  "tests": [
-    "def test_basic():\n    # TODO: Add test for basic functionality\n    assert True",
-    "def test_edge_case():\n    # TODO: Add test for edge case\n    assert True",
-    "def test_error_handling():\n    # TODO: Add test for error handling\n    assert True"
-  ]
+    "lesson": "# Python Conditionals\n\n## Introduction\nConditional statements allow your code to make decisions and execute different code blocks based on conditions.\n\n## Concept Overview\nPython uses `if`, `elif` (else if), and `else` statements to control program flow based on boolean conditions.\n\n## Syntax\n```python\n# Basic if statement\nage = 18\nif age >= 18:\n    print('You are an adult')\nelse:\n    print('You are a minor')\n```\n\n```python\n# Multiple conditions using elif\ngrade = 85\nif grade >= 90:\n    print('A')\nelif grade >= 80:\n    print('B')\nelif grade >= 70:\n    print('C')\nelse:\n    print('F')\n```\n\n## Key Points\n- Indentation is crucial in Python to define code blocks\n- Conditions must evaluate to boolean values\n- Multiple conditions can be checked using `and`, `or` operators\n- `elif` can be used for multiple alternative conditions\n\n## Common Mistakes\n- Forgetting proper indentation\n- Using = (assignment) instead of == (comparison)\n- Not handling all possible cases\n\n## Practice\nTry writing a program that:\n1. Checks if a number is positive, negative, or zero\n2. Determines if a year is a leap year\n\n```python\n# Hint: Use multiple elif statements\nnum = -5\nif num > 0:\n    print('Positive')\n# Complete the rest...\n```",
+    "challenge": "def check_temperature(temp):\n    '''\n    Write a function that returns a message based on temperature:\n    - Below 0: 'Freezing'\n    - 0-15: 'Cold'\n    - 16-25: 'Pleasant'\n    - Above 25: 'Hot'\n    \n    Parameters:\n    temp (float): Temperature in Celsius\n    \n    Returns:\n    str: Description of temperature\n    '''\n    pass",
+    "tests": [
+        "def test_freezing_temp():\n    assert check_temperature(-5) == 'Freezing'\n    assert check_temperature(-20) == 'Freezing'",
+        "def test_normal_ranges():\n    assert check_temperature(10) == 'Cold'\n    assert check_temperature(20) == 'Pleasant'\n    assert check_temperature(30) == 'Hot'",
+        "def test_boundary_values():\n    assert check_temperature(0) == 'Cold'\n    assert check_temperature(15) == 'Cold'\n    assert check_temperature(16) == 'Pleasant'\n    assert check_temperature(25) == 'Pleasant'"
+    ]
 }

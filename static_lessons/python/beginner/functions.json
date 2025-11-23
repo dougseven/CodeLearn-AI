@@ -1,9 +1,9 @@
 {
-  "lesson": "# Functions in Python\n\n## Introduction\n\n[Write a brief introduction to functions]\n\n## Concept Overview\n\n[Explain the main concept]\n\n## Syntax\n\n```python\n# Example 1: Basic usage\n```\n\n```python\n# Example 2: Common pattern\n```\n\n## Key Points\n\n- Point 1\n- Point 2\n- Point 3\n\n## Common Mistakes\n\n[Describe common pitfalls]\n\n## Practice\n\nTry these examples yourself:\n\n```python\n# Exercise hint\n```\n",
-  "challenge": "Create a program that demonstrates functions.\n\nRequirements:\n1. [Requirement 1]\n2. [Requirement 2]\n3. [Requirement 3]\n\nYour code should handle edge cases and follow best practices.\n",
-  "tests": [
-    "def test_basic():\n    # TODO: Add test for basic functionality\n    assert True",
-    "def test_edge_case():\n    # TODO: Add test for edge case\n    assert True",
-    "def test_error_handling():\n    # TODO: Add test for error handling\n    assert True"
-  ]
+    "lesson": "# Python Functions\n\n## Introduction\nFunctions are reusable blocks of code that perform specific tasks. They help organize code, reduce repetition, and make programs more maintainable.\n\n## Concept Overview\nA function is defined using the `def` keyword, followed by the function name and parentheses containing optional parameters. Functions can return values using the `return` statement.\n\n## Syntax\n```python\n# Basic function definition\ndef greet(name):\n    return f'Hello, {name}!'\n\n# Calling the function\nresult = greet('Alice')\nprint(result)  # Output: Hello, Alice!\n```\n\n```python\n# Function with multiple parameters and default values\ndef calculate_total(price, tax_rate=0.1):\n    tax = price * tax_rate\n    return price + tax\n\ntotal = calculate_total(100)  # Using default tax_rate\nprint(total)  # Output: 110.0\n```\n\n## Key Points\n- Functions must be defined before they can be called\n- Functions can accept zero or more parameters\n- Parameters can have default values\n- The `return` statement is optional (functions return None by default)\n- Functions create their own scope for variables\n\n## Common Mistakes\n- Forgetting to use the `return` statement when needed\n- Using undefined variables inside functions\n- Confusing parameters and arguments\n- Not handling edge cases\n\n## Practice\nTry creating a function that:\n1. Takes a list of numbers\n2. Returns the average\n\n```python\n# Hint:\ndef calculate_average(numbers):\n    # Use sum() and len() functions\n    pass\n```",
+    "challenge": "# Create a function that counts vowels in a string\n# Requirements:\n# 1. Function should accept a string parameter\n# 2. Return the number of vowels (a,e,i,o,u) in the string\n# 3. Handle both uppercase and lowercase vowels\n# 4. Return 0 for empty strings or strings with no vowels\n\ndef count_vowels(text):\n    pass",
+    "tests": [
+        "def test_basic_vowel_count():\n    from solution import count_vowels\n    assert count_vowels('hello') == 2\n    assert count_vowels('PYTHON') == 1",
+        "def test_empty_string():\n    from solution import count_vowels\n    assert count_vowels('') == 0\n    assert count_vowels('xyz') == 0",
+        "def test_mixed_case():\n    from solution import count_vowels\n    assert count_vowels('AeIoU') == 5\n    assert count_vowels('tEst') == 1"
+    ]
 }

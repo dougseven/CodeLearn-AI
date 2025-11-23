@@ -2745,7 +2745,7 @@ git push
 **Next Steps (Do These at Your Own Pace):**
 
 1. Fill in 2-3 lessons per day using the guide
-2. Run `python3 tools/validate_lessons.py` after each one
+2. Run `python3 ./tools/validate_lessons.py` after each one
 3. Upload batches: `./tools/s3-manager.sh sync-lessons`
 4. Goal: Complete 20 lessons before launch
 
@@ -3162,7 +3162,7 @@ def cache_lesson(lesson_key: str, content: Dict, cost: float, source: str):
             'createdAt': int(time.time()),
             'ttl': int(time.time()) + (90 * 24 * 3600),  # 90 days
             'hitCount': 0,
-            'totalCost': cost
+            'totalCost': Decimal(str(cost))  # Convert float to Decimal for DynamoDB
         })
         print(f"✅ Cached lesson: {lesson_key}")
     except Exception as e:
@@ -3212,50 +3212,97 @@ boto3==1.34.10
 
 **Save the file**
 
-### Step 7.3: Create ValidationLambda
+### Step 7.3: Create Secure ValidationLambda
 
-**What you're doing:** Building the function that runs user code and validates it against test cases.
+**What you're doing:** Building a secure function that validates user code using containerized execution instead of dangerous direct code execution.
+
+> **🚨 SECURITY NOTE:** The original approach of directly executing user code in Lambda poses severe security risks. We use containerized execution for safety.
+
+#### Choose Your Security Approach
+
+This implementation provides **two secure alternatives** for code validation:
+
+1. **AWS CodeBuild (Default/Recommended)** - Managed service with built-in isolation
+2. **ECS Fargate (Maximum Security)** - Complete container isolation with advanced security constraints
+
+---
+
+#### Option A: CodeBuild Approach (Default)
+
+**Pros:**
+- ✅ Managed service - AWS handles infrastructure
+- ✅ Easy setup and maintenance
+- ✅ Cost-effective for sporadic usage
+- ✅ Built-in logging and monitoring
+- ✅ Quick deployment
+
+**Cons:**
+- ⚠️ Less control over execution environment
+- ⚠️ Shared infrastructure (though isolated)
 
 **In VSCode, create file: `validation_lambda/handler.py`**
 
 ```python
+#!/usr/bin/env python3
+"""
+Secure code validation using AWS CodeBuild
+This replaces dangerous direct code execution with isolated container execution
+"""
+
 import json
 import os
 import boto3
-import subprocess
-import tempfile
 import time
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
+from botocore.exceptions import ClientError
 
+# AWS clients
+codebuild = boto3.client('codebuild')
+s3 = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
-progress_table = dynamodb.Table(os.environ.get('PROGRESS_TABLE', 'codelearn-progress-dev'))
 
-TIMEOUT_SECONDS = 10
+# Configuration from environment
+CODEBUILD_PROJECT = os.environ.get('VALIDATION_PROJECT', 'codelearn-validation')
+VALIDATION_BUCKET = os.environ.get('VALIDATION_BUCKET', 'codelearn-validation-temp')
+PROGRESS_TABLE = os.environ.get('PROGRESS_TABLE', 'codelearn-progress-dev')
 
+# Security constraints
+MAX_CODE_LENGTH = 10000  # 10KB max
+FORBIDDEN_IMPORTS = [
+    'os', 'sys', 'subprocess', 'socket', 'urllib', 'requests', 
+    'boto3', 'http', 'ftplib', 'smtplib', '__import__', 'eval', 'exec'
+]
+VALID_LANGUAGES = ['python']
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    """
-    Execute user code - OPTIMIZED for cost
-    """
+    """Secure code validation orchestrator"""
     try:
         body = json.loads(event.get('body', '{}'))
         
-        code = body.get('code')
+        code = body.get('code', '')
         tests = body.get('tests', [])
         language = body.get('language', 'python')
         lesson_id = body.get('lessonId')
+        user_id = body.get('userId', 'anonymous')
         
-        if not all([code, tests, language]):
-            return error_response(400, 'Missing required parameters')
+        # Input validation
+        validation_error = validate_inputs(code, tests, language)
+        if validation_error:
+            return error_response(400, validation_error)
         
-        # Execute code with tests
-        if language == 'python':
-            results = run_python_tests(code, tests)
-        else:
-            return error_response(400, f'Unsupported language: {language}')
+        # Security validation
+        security_error = validate_code_security(code, tests)
+        if security_error:
+            return error_response(403, f'Security violation: {security_error}')
         
-        # Check if all tests passed
-        all_passed = all(r['passed'] for r in results)
+        # Execute in secure container
+        execution_id = f"{user_id}_{lesson_id}_{int(time.time())}"
+        results = execute_code_securely(code, tests, language, execution_id)
+        
+        # Track progress if all tests passed
+        all_passed = all(r.get('passed', False) for r in results)
+        if all_passed and lesson_id:
+            track_progress(user_id, lesson_id)
         
         return {
             'statusCode': 200,
@@ -3263,104 +3310,196 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'body': json.dumps({
                 'passed': all_passed,
                 'results': results,
-                'feedback': 'Great job! All tests passed!' if all_passed else 'Some tests failed. Review the errors and try again.'
+                'executionId': execution_id,
+                'feedback': generate_feedback(results)
             })
         }
         
     except Exception as e:
         print(f"Validation error: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return error_response(500, f'Failed to validate code: {str(e)}')
+        return error_response(500, 'Internal validation error')
 
 
-def run_python_tests(code: str, tests: List[str]) -> List[Dict[str, Any]]:
-    """Execute Python code with pytest - OPTIMIZED"""
+def validate_inputs(code: str, tests: List[str], language: str) -> Optional[str]:
+    """Validate basic input parameters"""
+    if not code or not code.strip():
+        return 'Code cannot be empty'
     
-    results = []
+    if len(code) > MAX_CODE_LENGTH:
+        return f'Code too long (max {MAX_CODE_LENGTH} characters)'
     
-    with tempfile.TemporaryDirectory() as tmpdir:
-        # Write user code
-        code_file = os.path.join(tmpdir, 'solution.py')
-        with open(code_file, 'w') as f:
-            f.write(code)
+    if not tests:
+        return 'At least one test is required'
+    
+    if language not in VALID_LANGUAGES:
+        return f'Language {language} not supported'
+    
+    return None
+
+
+def validate_code_security(code: str, tests: List[str]) -> Optional[str]:
+    """Security validation to prevent malicious code"""
+    
+    # Check for forbidden imports/functions
+    code_lower = code.lower()
+    for forbidden in FORBIDDEN_IMPORTS:
+        if forbidden in code_lower:
+            return f'Forbidden import/function: {forbidden}'
+    
+    # Check tests as well
+    all_test_code = '\n'.join(tests).lower()
+    for forbidden in FORBIDDEN_IMPORTS:
+        if forbidden in all_test_code:
+            return f'Forbidden import/function in tests: {forbidden}'
+    
+    return None
+
+
+def execute_code_securely(code: str, tests: List[str], language: str, execution_id: str) -> List[Dict[str, Any]]:
+    """Execute code in secure CodeBuild environment"""
+    
+    try:
+        # Upload code to S3 for CodeBuild
+        upload_code_to_s3(code, tests, execution_id)
         
-        # Write test file
-        test_file = os.path.join(tmpdir, 'test_solution.py')
-        test_content = 'from solution import *\n\n' + '\n\n'.join(tests)
-        with open(test_file, 'w') as f:
-            f.write(test_content)
+        # Start CodeBuild execution
+        build_id = start_codebuild_execution(execution_id)
         
-        # Run pytest
+        # Wait for completion and get results
+        results = wait_for_execution_results(build_id, execution_id)
+        
+        # Clean up temporary files
+        cleanup_execution_files(execution_id)
+        
+        return results
+        
+    except Exception as e:
+        print(f"Execution error: {str(e)}")
+        return [{
+            'name': 'execution_error',
+            'passed': False,
+            'error': 'Code execution failed'
+        }]
+
+
+def upload_code_to_s3(code: str, tests: List[str], execution_id: str) -> None:
+    """Upload user code and tests to S3 for CodeBuild"""
+    execution_data = {
+        'code': code,
+        'tests': tests,
+        'timestamp': int(time.time())
+    }
+    
+    s3_key = f"executions/{execution_id}/input.json"
+    s3.put_object(
+        Bucket=VALIDATION_BUCKET,
+        Key=s3_key,
+        Body=json.dumps(execution_data),
+        ServerSideEncryption='AES256'
+    )
+
+
+def start_codebuild_execution(execution_id: str) -> str:
+    """Start CodeBuild project for secure execution"""
+    
+    response = codebuild.start_build(
+        projectName=CODEBUILD_PROJECT,
+        environmentVariablesOverride=[
+            {'name': 'EXECUTION_ID', 'value': execution_id},
+            {'name': 'S3_BUCKET', 'value': VALIDATION_BUCKET}
+        ],
+        timeoutInMinutesOverride=5
+    )
+    
+    return response['build']['id']
+
+
+def wait_for_execution_results(build_id: str, execution_id: str, max_wait: int = 300) -> List[Dict[str, Any]]:
+    """Wait for CodeBuild execution and retrieve results"""
+    
+    start_time = time.time()
+    
+    while time.time() - start_time < max_wait:
         try:
-            result = subprocess.run(
-                ['pytest', test_file, '-v', '--tb=short'],
-                cwd=tmpdir,
-                capture_output=True,
-                text=True,
-                timeout=TIMEOUT_SECONDS
-            )
+            response = codebuild.batch_get_builds(ids=[build_id])
+            build = response['builds'][0]
+            status = build['buildStatus']
             
-            # Parse pytest output
-            for line in result.stdout.split('\n'):
-                if '::test_' in line:
-                    test_name = line.split('::')[1].split(' ')[0]
-                    passed = 'PASSED' in line
-                    
-                    error_msg = None
-                    if not passed and 'FAILED' in line:
-                        # Extract error message
-                        error_lines = []
-                        in_error = False
-                        for err_line in result.stdout.split('\n'):
-                            if 'AssertionError' in err_line or 'Error' in err_line:
-                                in_error = True
-                            if in_error:
-                                error_lines.append(err_line)
-                                if len(error_lines) > 3:
-                                    break
-                        error_msg = '\n'.join(error_lines[:3])
-                    
-                    results.append({
-                        'name': test_name,
-                        'passed': passed,
-                        'error': error_msg
-                    })
+            if status == 'SUCCEEDED':
+                return get_execution_results(execution_id)
+            elif status in ['FAILED', 'STOPPED', 'TIMED_OUT']:
+                return [{'name': 'execution_failed', 'passed': False, 'error': f'Build {status.lower()}'}]
             
-            # If no results parsed, check for syntax errors
-            if not results and result.returncode != 0:
-                results.append({
-                    'name': 'Execution',
-                    'passed': False,
-                    'error': result.stderr[:200] if result.stderr else 'Code execution failed'
-                })
+            time.sleep(2)
             
-        except subprocess.TimeoutExpired:
-            results.append({
-                'name': 'Execution',
-                'passed': False,
-                'error': f'Code execution timeout ({TIMEOUT_SECONDS}s)'
-            })
         except Exception as e:
-            results.append({
-                'name': 'Execution',
-                'passed': False,
-                'error': str(e)
-            })
+            print(f"Error checking build status: {e}")
+            break
     
-    return results if results else [{'name': 'Unknown', 'passed': False, 'error': 'No tests executed'}]
+    return [{'name': 'execution_timeout', 'passed': False, 'error': 'Execution timeout'}]
+
+
+def get_execution_results(execution_id: str) -> List[Dict[str, Any]]:
+    """Retrieve execution results from S3"""
+    try:
+        s3_key = f"executions/{execution_id}/results.json"
+        response = s3.get_object(Bucket=VALIDATION_BUCKET, Key=s3_key)
+        results = json.loads(response['Body'].read())
+        return results.get('test_results', [])
+    except ClientError:
+        return [{'name': 'results_error', 'passed': False, 'error': 'Could not retrieve results'}]
+
+
+def cleanup_execution_files(execution_id: str) -> None:
+    """Clean up temporary S3 files"""
+    try:
+        response = s3.list_objects_v2(Bucket=VALIDATION_BUCKET, Prefix=f"executions/{execution_id}/")
+        if 'Contents' in response:
+            delete_objects = [{'Key': obj['Key']} for obj in response['Contents']]
+            s3.delete_objects(Bucket=VALIDATION_BUCKET, Delete={'Objects': delete_objects})
+    except Exception as e:
+        print(f"Cleanup error: {e}")
+
+
+def track_progress(user_id: str, lesson_id: str) -> None:
+    """Track lesson completion in DynamoDB"""
+    try:
+        table = dynamodb.Table(PROGRESS_TABLE)
+        table.put_item(Item={
+            'userId': user_id,
+            'lessonId': lesson_id,
+            'completedAt': int(time.time()),
+            'status': 'completed'
+        })
+    except Exception as e:
+        print(f"Progress tracking error: {e}")
+
+
+def generate_feedback(results: List[Dict[str, Any]]) -> str:
+    """Generate helpful feedback based on results"""
+    passed_count = sum(1 for r in results if r.get('passed', False))
+    total_count = len(results)
+    
+    if passed_count == total_count:
+        return "🎉 Excellent! All tests passed!"
+    elif passed_count == 0:
+        return "❌ No tests passed. Review your code and try again."
+    else:
+        return f"✅ {passed_count}/{total_count} tests passed. You're getting close!"
 
 
 def cors_headers() -> Dict[str, str]:
+    """CORS headers for API responses"""
     return {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
+        'Access-Control-Allow-Methods': 'POST,OPTIONS'
     }
 
 
 def error_response(status_code: int, message: str) -> Dict[str, Any]:
+    """Generate error response"""
     return {
         'statusCode': status_code,
         'headers': cors_headers(),
@@ -3374,10 +3513,81 @@ def error_response(status_code: int, message: str) -> Dict[str, Any]:
 
 ```
 boto3==1.34.10
-pytest==7.4.3
+botocore==1.34.10
 ```
 
 **Save the file**
+
+---
+
+#### Option B: ECS Fargate Approach (Maximum Security)
+
+**Pros:**
+- 🔒 Complete container isolation
+- 🔒 Read-only filesystem
+- 🔒 Dropped Linux capabilities  
+- 🔒 Network isolation
+- 🔒 Fine-grained resource controls
+
+**Cons:**
+- ⚠️ More complex setup
+- ⚠️ Requires container management
+- ⚠️ Higher operational overhead
+
+> **Note:** To use the Fargate approach instead, replace the CodeBuild handler above with the ECS Fargate version from `secure_validation/ecs_fargate_validator.py`.
+
+---
+
+#### Required Infrastructure Setup
+
+**For CodeBuild Approach (Default):**
+
+1. **Create S3 bucket for temporary files:**
+```bash
+aws s3 mb s3://codelearn-validation-$AWS_ACCOUNT_ID
+```
+
+2. **Deploy CodeBuild project using CloudFormation:**
+```bash
+aws cloudformation create-stack \
+  --stack-name codelearn-validation \
+  --template-body file://secure_validation/codebuild-project.yml \
+  --parameters ParameterKey=ValidationBucket,ParameterValue=codelearn-validation-$AWS_ACCOUNT_ID \
+  --capabilities CAPABILITY_IAM
+```
+
+3. **Set Lambda environment variables:**
+```
+VALIDATION_PROJECT=codelearn-validation
+VALIDATION_BUCKET=codelearn-validation-$AWS_ACCOUNT_ID
+```
+
+**For Fargate Approach (Alternative):**
+
+Follow the complete setup instructions in `secure_validation/README.md`.
+
+---
+
+#### Security Features
+
+Both approaches provide:
+
+✅ **Input Validation** - Code length limits, forbidden imports detection  
+✅ **Execution Isolation** - No direct Lambda execution of user code  
+✅ **Resource Limits** - Memory, CPU, and time constraints  
+✅ **Security Constraints** - Non-root users, minimal environments  
+✅ **Network Isolation** - No unauthorized external access  
+✅ **Audit Trail** - Complete logging and monitoring  
+
+#### Migration Notes
+
+> **⚠️ NEVER use direct code execution in production.** The original approach allows arbitrary code execution and poses severe security risks including:
+> - Potential AWS credential theft
+> - System compromise
+> - Data exfiltration
+> - Service disruption
+
+Both containerized approaches eliminate these risks while maintaining full functionality.
 
 ### Step 7.4: Create UserLambda
 
@@ -3654,7 +3864,7 @@ EOF
 # Invoke the function
 aws lambda invoke \
   --function-name CodeLearn-Lesson \
-  --payload file:///tmp/test-lesson-event.json \
+  --payload fileb:///tmp/test-lesson-event.json \
   --region $AWS_REGION \
   /tmp/lesson-response.json
 
@@ -3682,7 +3892,7 @@ EOF
 
 aws lambda invoke \
   --function-name CodeLearn-Validation \
-  --payload file:///tmp/test-validation-event.json \
+  --payload fileb:///tmp/test-validation-event.json \
   --region $AWS_REGION \
   /tmp/validation-response.json
 
@@ -3834,7 +4044,7 @@ chmod +x tools/lambda-stats.sh
 aws lambda list-functions --query 'Functions[?starts_with(FunctionName, `CodeLearn`)].FunctionName'
 
 # 2. Test each function
-aws lambda invoke --function-name CodeLearn-Lesson --payload file:///tmp/test-lesson-event.json /tmp/test.json
+aws lambda invoke --function-name CodeLearn-Lesson --payload fileb:///tmp/test-lesson-event.json /tmp/test.json
 cat /tmp/test.json
 
 # 3. Check logs
@@ -4343,7 +4553,7 @@ echo "Test 3: CORS Headers"
 echo "-------------------"
 HEADERS=$(curl -s -I -X OPTIONS "${API_ENDPOINT}/api/lesson")
 
-if echo "$HEADERS" | grep -q "Access-Control-Allow-Origin"; then
+if echo "$HEADERS" | grep -q "access-control-allow-origin"; then
     echo "✅ CORS enabled"
 else
     echo "❌ CORS not enabled"

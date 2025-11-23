@@ -1,9 +1,9 @@
 {
-  "lesson": "# File Input Output in Python\n\n## Introduction\n\n[Write a brief introduction to file input output]\n\n## Concept Overview\n\n[Explain the main concept]\n\n## Syntax\n\n```python\n# Example 1: Basic usage\n```\n\n```python\n# Example 2: Common pattern\n```\n\n## Key Points\n\n- Point 1\n- Point 2\n- Point 3\n\n## Common Mistakes\n\n[Describe common pitfalls]\n\n## Practice\n\nTry these examples yourself:\n\n```python\n# Exercise hint\n```\n",
-  "challenge": "Create a program that demonstrates file input output.\n\nRequirements:\n1. [Requirement 1]\n2. [Requirement 2]\n3. [Requirement 3]\n\nYour code should handle edge cases and follow best practices.\n",
-  "tests": [
-    "def test_basic():\n    # TODO: Add test for basic functionality\n    assert True",
-    "def test_edge_case():\n    # TODO: Add test for edge case\n    assert True",
-    "def test_error_handling():\n    # TODO: Add test for error handling\n    assert True"
-  ]
+    "lesson": "# File Input/Output in Python\n\n## Introduction\nFile Input/Output (I/O) operations allow you to read from and write to files on your computer using Python. This is essential for data persistence and processing.\n\n## Concept Overview\nPython provides built-in functions to work with files:\n- `open()`: Opens a file and returns a file object\n- `read()/write()`: Read from or write to a file\n- `close()`: Close the file when done\n\n## Syntax\n```python\n# Basic file reading\nwith open('example.txt', 'r') as file:\n    content = file.read()\n    print(content)\n```\n\n```python\n# Basic file writing\nwith open('output.txt', 'w') as file:\n    file.write('Hello, World!')\n```\n\n## Key Points\n- Always use the `with` statement to automatically close files\n- Common file modes: 'r' (read), 'w' (write), 'a' (append)\n- Use proper error handling for file operations\n- Files should be closed after use\n\n## Common Mistakes\n- Forgetting to close files\n- Not handling file not found errors\n- Using wrong file paths\n- Not encoding text properly\n\n## Practice\nTry reading a file line by line:\n```python\nwith open('example.txt', 'r') as file:\n    for line in file:\n        print(line.strip())\n```",
+    "challenge": "def read_and_count_lines(filename):\n    \"\"\"Read a text file and return the number of lines and words.\n    \n    Args:\n        filename (str): Path to the text file\n    \n    Returns:\n        tuple: (number of lines, number of words)\n    \n    Raises:\n        FileNotFoundError: If the file doesn't exist\n    \"\"\"\n    pass",
+    "tests": [
+        "def test_basic_counting():\n    with open('test.txt', 'w') as f:\n        f.write('Hello World\\nPython is great')\n    assert read_and_count_lines('test.txt') == (2, 5)",
+        "def test_empty_file():\n    with open('empty.txt', 'w') as f:\n        pass\n    assert read_and_count_lines('empty.txt') == (0, 0)",
+        "def test_file_not_found():\n    import pytest\n    with pytest.raises(FileNotFoundError):\n        read_and_count_lines('nonexistent.txt')"
+    ]
 }

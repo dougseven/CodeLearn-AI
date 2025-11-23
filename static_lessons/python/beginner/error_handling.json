@@ -1,9 +1,10 @@
 {
-  "lesson": "# Error Handling in Python\n\n## Introduction\n\n[Write a brief introduction to error handling]\n\n## Concept Overview\n\n[Explain the main concept]\n\n## Syntax\n\n```python\n# Example 1: Basic usage\n```\n\n```python\n# Example 2: Common pattern\n```\n\n## Key Points\n\n- Point 1\n- Point 2\n- Point 3\n\n## Common Mistakes\n\n[Describe common pitfalls]\n\n## Practice\n\nTry these examples yourself:\n\n```python\n# Exercise hint\n```\n",
-  "challenge": "Create a program that demonstrates error handling.\n\nRequirements:\n1. [Requirement 1]\n2. [Requirement 2]\n3. [Requirement 3]\n\nYour code should handle edge cases and follow best practices.\n",
-  "tests": [
-    "def test_basic():\n    # TODO: Add test for basic functionality\n    assert True",
-    "def test_edge_case():\n    # TODO: Add test for edge case\n    assert True",
-    "def test_error_handling():\n    # TODO: Add test for error handling\n    assert True"
-  ]
+    "lesson": "# Python Error Handling\n\n## Introduction\nError handling is a crucial programming concept that helps manage unexpected situations in your code. Python uses try-except blocks to handle errors gracefully.\n\n## Concept Overview\nWhen an error occurs in Python, it raises an exception. Instead of crashing, we can catch and handle these exceptions using try-except blocks.\n\n## Syntax\n```python\n# Basic try-except\ntry:\n    result = 10 / 0\nexcept ZeroDivisionError:\n    print('Cannot divide by zero!')\n```\n\n```python\n# Multiple exception handling\ntry:\n    number = int(input('Enter a number: '))\n    result = 10 / number\nexcept ValueError:\n    print('Please enter a valid number')\nexcept ZeroDivisionError:\n    print('Cannot divide by zero')\nfinally:\n    print('This always executes')\n```\n\n## Key Points\n- Use try-except to handle potential errors\n- Be specific about which exceptions to catch\n- The finally block always executes\n- Avoid catching all exceptions with bare except\n\n## Common Mistakes\n- Catching all exceptions with `except:` (too broad)\n- Not specifying the type of exception to catch\n- Ignoring the exception information\n\n## Practice\nTry creating a function that:\n1. Converts a string to integer\n2. Handles both ValueError and TypeError\n3. Returns None if conversion fails\n\n```python\ndef safe_convert(value):\n    try:\n        return int(value)\n    except (ValueError, TypeError):\n        return None\n```",
+    "challenge": "def divide_numbers(a, b):\n    \"\"\"Divide two numbers and handle potential errors.\n    \n    Requirements:\n    1. Return the result of a/b if valid\n    2. Return None if b is zero\n    3. Return None if inputs are not numbers\n    4. Raise ValueError if inputs are negative\n    \n    Args:\n        a: First number\n        b: Second number\n    Returns:\n        float: Result of division or None\n    \"\"\"\n    pass",
+    "tests": [
+        "def test_valid_division():\n    assert divide_numbers(10, 2) == 5.0\n    assert divide_numbers(7, 3.5) == 2.0",
+        "def test_zero_division():\n    assert divide_numbers(10, 0) is None\n    assert divide_numbers(5, 0) is None",
+        "def test_invalid_input():\n    assert divide_numbers('10', 2) is None\n    assert divide_numbers([], {}) is None",
+        "def test_negative_numbers():\n    try:\n        divide_numbers(-1, 2)\n        assert False, 'Should raise ValueError'\n    except ValueError:\n        assert True"
+    ]
 }
