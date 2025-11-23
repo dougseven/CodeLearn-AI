@@ -1,9 +1,9 @@
 {
-  "lesson": "# Loops in Java\n\n## Introduction\n\n[Write a brief introduction to loops]\n\n## Concept Overview\n\n[Explain the main concept]\n\n## Syntax\n\n```java\n# Example 1: Basic usage\n```\n\n```java\n# Example 2: Common pattern\n```\n\n## Key Points\n\n- Point 1\n- Point 2\n- Point 3\n\n## Common Mistakes\n\n[Describe common pitfalls]\n\n## Practice\n\nTry these examples yourself:\n\n```java\n# Exercise hint\n```\n",
-  "challenge": "Create a program that demonstrates loops.\n\nRequirements:\n1. [Requirement 1]\n2. [Requirement 2]\n3. [Requirement 3]\n\nYour code should handle edge cases and follow best practices.\n",
-  "tests": [
-    "def test_basic():\n    # TODO: Add test for basic functionality\n    assert True",
-    "def test_edge_case():\n    # TODO: Add test for edge case\n    assert True",
-    "def test_error_handling():\n    # TODO: Add test for error handling\n    assert True"
-  ]
+    "lesson": "# Java Loops: Mastering Iteration\n\n## Introduction\nLoops are fundamental control structures in Java that allow you to repeat a block of code multiple times, making your programs more efficient and concise.\n\n## Concept Overview\nIn Java, there are three primary types of loops:\n1. `for` loops\n2. `while` loops\n3. `do-while` loops\n\n## Syntax\n\n### For Loop\n```java\n// Standard for loop\nfor (int i = 0; i < 5; i++) {\n    System.out.println(i);\n}\n```\n\n### While Loop\n```java\n// While loop example\nint count = 0;\nwhile (count < 5) {\n    System.out.println(count);\n    count++;\n}\n```\n\n### Enhanced For Loop (For-Each)\n```java\n// Iterating through an array\nint[] numbers = {1, 2, 3, 4, 5};\nfor (int number : numbers) {\n    System.out.println(number);\n}\n```\n\n## Key Points\n- Loops help reduce code repetition\n- `break` can exit a loop prematurely\n- `continue` skips the current iteration\n- Be careful to avoid infinite loops\n- Initialize loop variables correctly\n\n## Common Mistakes\n- Forgetting loop termination condition\n- Off-by-one errors in loop bounds\n- Modifying loop variables incorrectly\n\n## Practice Exercises\n1. Create a method that prints numbers from 1 to 10\n2. Sum all elements in an array using a loop\n3. Find the largest number in an array\n\n```java\n// Example practice\nfor (int i = 1; i <= 10; i++) {\n    System.out.println(i);\n}\n```",
+    "challenge": "// Create a method that calculates the factorial of a given number\n// Requirements:\n// 1. Use a loop to calculate factorial\n// 2. Handle input 0 and 1 correctly\n// 3. Throw an IllegalArgumentException for negative inputs\n\npublic static long calculateFactorial(int n) {\n    // Your implementation here\n}",
+    "tests": [
+        "public void testBasicFactorial() {\n    assertEquals(24, calculateFactorial(4));\n}",
+        "public void testZeroAndOneFactorial() {\n    assertEquals(1, calculateFactorial(0));\n    assertEquals(1, calculateFactorial(1));\n}",
+        "public void testNegativeInput() {\n    assertThrows(IllegalArgumentException.class, () -> {\n        calculateFactorial(-1);\n    });\n}"
+    ]
 }

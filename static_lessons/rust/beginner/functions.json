@@ -1,9 +1,9 @@
 {
-  "lesson": "# Functions in Rust\n\n## Introduction\n\n[Write a brief introduction to functions]\n\n## Concept Overview\n\n[Explain the main concept]\n\n## Syntax\n\n```rust\n# Example 1: Basic usage\n```\n\n```rust\n# Example 2: Common pattern\n```\n\n## Key Points\n\n- Point 1\n- Point 2\n- Point 3\n\n## Common Mistakes\n\n[Describe common pitfalls]\n\n## Practice\n\nTry these examples yourself:\n\n```rust\n# Exercise hint\n```\n",
-  "challenge": "Create a program that demonstrates functions.\n\nRequirements:\n1. [Requirement 1]\n2. [Requirement 2]\n3. [Requirement 3]\n\nYour code should handle edge cases and follow best practices.\n",
-  "tests": [
-    "def test_basic():\n    # TODO: Add test for basic functionality\n    assert True",
-    "def test_edge_case():\n    # TODO: Add test for edge case\n    assert True",
-    "def test_error_handling():\n    # TODO: Add test for error handling\n    assert True"
-  ]
+    "lesson": "# Functions in Rust\n\n## Introduction\nFunctions are fundamental building blocks in Rust that allow you to organize and reuse code efficiently. They help break down complex problems into smaller, manageable pieces.\n\n## Concept Overview\nIn Rust, functions are defined using the `fn` keyword and have a clear syntax for declaring parameters, return types, and function bodies.\n\n## Syntax\n\n```rust\n// Basic function definition\nfn greet(name: &str) {\n    println!(\"Hello, {}!\", name);\n}\n\n// Function with return value\nfn add(a: i32, b: i32) -> i32 {\n    a + b  // Implicit return\n}\n\n// Function with explicit return\nfn multiply(a: i32, b: i32) -> i32 {\n    return a * b;\n}\n```\n\n## Key Points\n- Functions are defined with `fn` keyword\n- Parameters must have type annotations\n- Return type is specified after `->` \n- Last expression is implicitly returned\n- Use `return` keyword for early returns\n\n## Common Mistakes\n- Forgetting type annotations\n- Not handling potential return types\n- Misunderstanding implicit vs explicit returns\n\n## Practice Exercises\n\n```rust\n// Try implementing a function that calculates the area of a rectangle\nfn calculate_rectangle_area(width: f64, height: f64) -> f64 {\n    // Your implementation here\n}\n```\n\n### Hints\n- Use multiplication for area calculation\n- Consider precision with f64\n- Return the calculated area",
+    "challenge": "// Create a function that calculates the factorial of a given number\n// Requirements:\n// 1. Handle non-negative integers\n// 2. Use recursion\n// 3. Return 1 for 0 and 1\n// 4. Panic for negative inputs\n\nfn factorial(n: u32) -> u32 {\n    // Implement factorial calculation\n}",
+    "tests": [
+        "fn test_factorial_zero() {\n    assert_eq!(factorial(0), 1);\n}",
+        "fn test_factorial_positive() {\n    assert_eq!(factorial(5), 120);\n}",
+        "fn test_factorial_negative() {\n    let result = std::panic::catch_unwind(|| {\n        factorial(-1);\n    });\n    assert!(result.is_err());\n}"
+    ]
 }

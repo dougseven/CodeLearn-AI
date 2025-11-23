@@ -1,9 +1,9 @@
 {
-  "lesson": "# Dictionaries in Python\n\n## Introduction\n\n[Write a brief introduction to dictionaries]\n\n## Concept Overview\n\n[Explain the main concept]\n\n## Syntax\n\n```python\n# Example 1: Basic usage\n```\n\n```python\n# Example 2: Common pattern\n```\n\n## Key Points\n\n- Point 1\n- Point 2\n- Point 3\n\n## Common Mistakes\n\n[Describe common pitfalls]\n\n## Practice\n\nTry these examples yourself:\n\n```python\n# Exercise hint\n```\n",
-  "challenge": "Create a program that demonstrates dictionaries.\n\nRequirements:\n1. [Requirement 1]\n2. [Requirement 2]\n3. [Requirement 3]\n\nYour code should handle edge cases and follow best practices.\n",
-  "tests": [
-    "def test_basic():\n    # TODO: Add test for basic functionality\n    assert True",
-    "def test_edge_case():\n    # TODO: Add test for edge case\n    assert True",
-    "def test_error_handling():\n    # TODO: Add test for error handling\n    assert True"
-  ]
+    "lesson": "# Python Dictionaries\n\n## Introduction\nDictionaries are powerful data structures in Python that store key-value pairs. They are mutable, dynamic, and incredibly useful for organizing and accessing data.\n\n## Concept Overview\nA dictionary is an unordered collection where each item is a pair of a unique key and its associated value. Keys must be immutable (strings, numbers, or tuples).\n\n## Syntax\n```python\n# Creating and accessing dictionaries\nstudent = {\n    'name': 'John',\n    'age': 20,\n    'grades': [85, 90, 88]\n}\nprint(student['name'])  # Output: John\n```\n\n```python\n# Common dictionary methods\nmy_dict = {'a': 1, 'b': 2}\nmy_dict['c'] = 3        # Add new key-value pair\ndel my_dict['a']        # Remove a key-value pair\nprint(my_dict.get('x', 'Not found'))  # Safe access with default\n```\n\n## Key Points\n- Keys must be unique and immutable\n- Dictionaries are mutable (can be changed after creation)\n- Access values using square bracket notation or .get() method\n- Common methods: keys(), values(), items(), update(), clear()\n\n## Common Mistakes\n- Trying to access a non-existent key without handling KeyError\n- Using mutable objects as keys\n- Forgetting that dictionaries are unordered (in versions < 3.7)\n\n## Practice\nTry creating a dictionary to store book information:\n```python\nbooks = {}\n# Add title, author, and year published\n# Try accessing and modifying values\n```",
+    "challenge": "def count_words(text):\n    \"\"\"Create a dictionary that counts word frequency in a text.\n    \n    Args:\n        text (str): Input string to analyze\n        \n    Returns:\n        dict: Dictionary with words as keys and their counts as values\n        \n    Example:\n        count_words('hello world hello') -> {'hello': 2, 'world': 1}\n    \"\"\"\n    pass",
+    "tests": [
+        "def test_basic_count():\n    assert count_words('hello world hello') == {'hello': 2, 'world': 1}\n    assert count_words('a b c a b a') == {'a': 3, 'b': 2, 'c': 1}",
+        "def test_empty_string():\n    assert count_words('') == {}\n    assert count_words('   ') == {}",
+        "def test_special_cases():\n    assert count_words('Hello World hello world') == {'hello': 2, 'world': 2}\n    assert count_words('!!!') == {'!!!': 1}"
+    ]
 }

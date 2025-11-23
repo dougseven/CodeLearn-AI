@@ -1,9 +1,9 @@
 {
-  "lesson": "# Loops in Python\n\n## Introduction\n\n[Write a brief introduction to loops]\n\n## Concept Overview\n\n[Explain the main concept]\n\n## Syntax\n\n```python\n# Example 1: Basic usage\n```\n\n```python\n# Example 2: Common pattern\n```\n\n## Key Points\n\n- Point 1\n- Point 2\n- Point 3\n\n## Common Mistakes\n\n[Describe common pitfalls]\n\n## Practice\n\nTry these examples yourself:\n\n```python\n# Exercise hint\n```\n",
-  "challenge": "Create a program that demonstrates loops.\n\nRequirements:\n1. [Requirement 1]\n2. [Requirement 2]\n3. [Requirement 3]\n\nYour code should handle edge cases and follow best practices.\n",
-  "tests": [
-    "def test_basic():\n    # TODO: Add test for basic functionality\n    assert True",
-    "def test_edge_case():\n    # TODO: Add test for edge case\n    assert True",
-    "def test_error_handling():\n    # TODO: Add test for error handling\n    assert True"
-  ]
+    "lesson": "# Python Loops\n\n## Introduction\nLoops are fundamental programming constructs that allow you to repeat a block of code multiple times. Python provides several types of loops to handle different scenarios.\n\n## Concept Overview\nPython has two main types of loops:\n- `for` loops: Used to iterate over sequences (lists, strings, etc.)\n- `while` loops: Execute while a condition remains True\n\n## Syntax\n\n```python\n# For loop example\nfor i in range(5):\n    print(i)  # Prints 0, 1, 2, 3, 4\n\n# While loop example\ncount = 0\nwhile count < 5:\n    print(count)\n    count += 1\n```\n\n```python\n# Loop control statements\nfor i in range(10):\n    if i == 5:\n        break    # Exit loop\n    if i == 2:\n        continue # Skip to next iteration\n    print(i)\n```\n\n## Key Points\n- For loops are used with sequences or iterables\n- While loops continue until a condition becomes False\n- `break` exits the loop completely\n- `continue` skips to the next iteration\n- Use `range()` to generate number sequences\n\n## Common Mistakes\n- Forgetting to increment counter in while loops (infinite loop)\n- Not properly indenting loop body\n- Using break/continue outside of loops\n\n## Practice\nTry these exercises:\n```python\n# 1. Create a loop that prints even numbers from 0 to 10\n# 2. Sum all numbers in a list using a loop\n# 3. Create a countdown timer using while loop\n```",
+    "challenge": "def sum_even_numbers(n):\n    \"\"\"Sum all even numbers from 0 to n (inclusive).\n    \nRequirements:\n    1. Use a loop to calculate the sum\n    2. Only include even numbers\n    3. Return the sum as an integer\n    4. Handle negative input by returning 0\n    \nExample: sum_even_numbers(6) returns 12 (0 + 2 + 4 + 6)\n    \"\"\"\n    pass",
+    "tests": [
+        "def test_basic_sum():\n    assert sum_even_numbers(6) == 12\n    assert sum_even_numbers(10) == 30",
+        "def test_edge_cases():\n    assert sum_even_numbers(0) == 0\n    assert sum_even_numbers(-5) == 0",
+        "def test_odd_input():\n    assert sum_even_numbers(7) == 12  # Should sum 0,2,4,6"
+    ]
 }

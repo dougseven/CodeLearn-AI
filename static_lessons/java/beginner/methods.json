@@ -1,9 +1,9 @@
 {
-  "lesson": "# Methods in Java\n\n## Introduction\n\n[Write a brief introduction to methods]\n\n## Concept Overview\n\n[Explain the main concept]\n\n## Syntax\n\n```java\n# Example 1: Basic usage\n```\n\n```java\n# Example 2: Common pattern\n```\n\n## Key Points\n\n- Point 1\n- Point 2\n- Point 3\n\n## Common Mistakes\n\n[Describe common pitfalls]\n\n## Practice\n\nTry these examples yourself:\n\n```java\n# Exercise hint\n```\n",
-  "challenge": "Create a program that demonstrates methods.\n\nRequirements:\n1. [Requirement 1]\n2. [Requirement 2]\n3. [Requirement 3]\n\nYour code should handle edge cases and follow best practices.\n",
-  "tests": [
-    "def test_basic():\n    # TODO: Add test for basic functionality\n    assert True",
-    "def test_edge_case():\n    # TODO: Add test for edge case\n    assert True",
-    "def test_error_handling():\n    # TODO: Add test for error handling\n    assert True"
-  ]
+    "lesson": "# Java Methods: A Comprehensive Guide\n\n## Introduction\n\nMethods in Java are fundamental building blocks of object-oriented programming that allow you to organize and reuse code effectively.\n\n## Concept Overview\n\nA method is a block of code that performs a specific task and can be called multiple times throughout a program. Methods help break down complex problems into smaller, manageable pieces.\n\n## Syntax\n\n```java\n// Basic method declaration\npublic void sayHello() {\n    System.out.println(\"Hello, World!\");\n}\n\n// Method with parameters\npublic int addNumbers(int a, int b) {\n    return a + b;\n}\n\n// Method with return type\npublic String getGreeting(String name) {\n    return \"Welcome, \" + name + \"!\";\n}\n```\n\n## Key Points\n\n- Methods must be declared within a class\n- Methods can have return types (void, int, String, etc.)\n- Parameters are optional but often used\n- Methods can be public, private, or have other access modifiers\n- Use camelCase for method names\n\n## Common Mistakes\n\n- Forgetting to declare a return type\n- Not handling method parameters correctly\n- Overlooking method visibility and access\n\n## Practice Exercises\n\n1. Create a method that calculates the area of a rectangle\n2. Write a method that converts temperature from Celsius to Fahrenheit\n3. Implement a method that checks if a number is prime\n\n```java\n// Example practice hint\npublic int calculateRectangleArea(int length, int width) {\n    // TODO: Implement area calculation\n}\n```",
+    "challenge": "Create a Java class with methods that demonstrate different method types and capabilities.\n\nRequirements:\n1. Create a method that takes two integers and returns their sum\n2. Implement a method that prints a welcome message with a name parameter\n3. Write a method that calculates the factorial of a given number\n\nYour methods should handle basic input scenarios and follow Java best practices.",
+    "tests": [
+        "public void testSum() {\n    Solution solution = new Solution();\n    assertEquals(10, solution.addNumbers(4, 6));\n}",
+        "public void testWelcomeMessage() {\n    Solution solution = new Solution();\n    // Test welcome message generation\n    assertNotNull(solution.generateWelcome(\"Alice\"));\n}",
+        "public void testFactorial() {\n    Solution solution = new Solution();\n    assertEquals(120, solution.calculateFactorial(5));\n}"
+    ]
 }

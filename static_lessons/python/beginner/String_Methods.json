@@ -1,9 +1,9 @@
 {
-  "lesson": "# String Methods in Python\n\n## Introduction\n\n[Write a brief introduction to string methods]\n\n## Concept Overview\n\n[Explain the main concept]\n\n## Syntax\n\n```python\n# Example 1: Basic usage\n```\n\n```python\n# Example 2: Common pattern\n```\n\n## Key Points\n\n- Point 1\n- Point 2\n- Point 3\n\n## Common Mistakes\n\n[Describe common pitfalls]\n\n## Practice\n\nTry these examples yourself:\n\n```python\n# Exercise hint\n```\n",
-  "challenge": "Create a program that demonstrates string methods.\n\nRequirements:\n1. [Requirement 1]\n2. [Requirement 2]\n3. [Requirement 3]\n\nYour code should handle edge cases and follow best practices.\n",
-  "tests": [
-    "def test_basic():\n    # TODO: Add test for basic functionality\n    assert True",
-    "def test_edge_case():\n    # TODO: Add test for edge case\n    assert True",
-    "def test_error_handling():\n    # TODO: Add test for error handling\n    assert True"
-  ]
+    "lesson": "# Python String Methods\n\n## Introduction\nString methods in Python are built-in functions that allow you to manipulate and analyze text strings. These methods are essential for text processing and string manipulation.\n\n## Concept Overview\nPython strings are immutable sequences of characters that come with many useful methods. These methods can transform case, search for substrings, replace text, and more.\n\n## Common String Methods\n\n```python\n# Basic string methods\ntext = 'Hello, World!'\nprint(text.lower())      # hello, world!\nprint(text.upper())      # HELLO, WORLD!\nprint(text.strip())      # removes whitespace\nprint(text.replace('Hello', 'Hi'))  # Hi, World!\n```\n\n```python\n# Search and validation methods\ntext = 'Python Programming'\nprint(text.startswith('Python'))  # True\nprint(text.endswith('ming'))      # True\nprint(text.find('gram'))          # 8\nprint(text.isalpha())             # False\n```\n\n## Key Points\n- String methods don't modify the original string\n- Methods return a new string with the changes\n- String methods are case-sensitive by default\n- Most methods have both case-sensitive and case-insensitive variants\n\n## Common Mistakes\n- Trying to modify strings directly (they're immutable)\n- Forgetting that methods return new strings\n- Not checking if a string is empty before using certain methods\n\n## Practice\nTry these exercises:\n```python\n# 1. Convert a string to title case\nname = 'john doe'\nname = name.title()  # John Doe\n\n# 2. Check if a string contains only digits\nphone = '12345'\nphone.isdigit()  # True\n```",
+    "challenge": "def process_string(text):\n    '''\n    Create a function that processes a string by:\n    1. Converting it to lowercase\n    2. Removing any leading/trailing whitespace\n    3. Replacing all spaces with underscores\n    \n    Example:\n    process_string('  Hello World  ') \u2192 'hello_world'\n    '''\n    pass",
+    "tests": [
+        "def test_basic_string():\n    assert process_string('Hello World') == 'hello_world'\n    assert process_string('Python Programming') == 'python_programming'",
+        "def test_whitespace():\n    assert process_string('  Hello  World  ') == 'hello_world'\n    assert process_string('\\tPython\\n') == 'python'",
+        "def test_empty_string():\n    assert process_string('') == ''\n    assert process_string('   ') == ''"
+    ]
 }

@@ -1,0 +1,221 @@
+# CloudFormation template for secure CodeBuild validation project
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Secure code validation using CodeBuild with strict security constraints'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: 'codelearn-validation'
+    Description: 'CodeBuild project name'
+  
+  ValidationBucket:
+    Type: String
+    Description: 'S3 bucket for temporary validation files'
+
+Resources:
+  # KMS Key for CloudWatch Logs encryption (temporarily disabled for setup)
+  # LogsKmsKey:
+  #   Type: AWS::KMS::Key
+  #   Properties:
+  #     Description: 'KMS key for CodeBuild validation logs encryption'
+  #     KeyPolicy:
+  #       Version: '2012-10-17'
+  #       Statement:
+  #         - Sid: Enable IAM User Permissions
+  #           Effect: Allow
+  #           Principal:
+  #             AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+  #           Action: 'kms:*'
+  #           Resource: '*'
+
+  # LogsKmsKeyAlias:
+  #   Type: AWS::KMS::Alias
+  #   Properties:
+  #     AliasName: !Sub 'alias/${ProjectName}-logs'
+  #     TargetKeyId: !Ref LogsKmsKey
+
+  # IAM Role for CodeBuild (minimal permissions)
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ValidationOnlyPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # CloudWatch Logs (required)
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ProjectName}*'
+              
+              # S3 access (specific bucket only)
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !Sub 'arn:aws:s3:::${ValidationBucket}'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub 'arn:aws:s3:::${ValidationBucket}/*'
+              
+              
+              # Explicitly deny dangerous actions
+              - Effect: Deny
+                Action:
+                  - ec2:*
+                  - iam:*
+                  - lambda:*
+                  - rds:*
+                  - dynamodb:*
+                  - secretsmanager:*
+                  - ssm:*
+                  - sts:AssumeRole
+                Resource: '*'
+              
+              # Deny KMS access (no encryption needed for now)
+              - Effect: Deny
+                Action:
+                  - kms:*
+                Resource: '*'
+
+  # CodeBuild Project with security constraints
+  ValidationProject:
+    Type: AWS::CodeBuild::Project
+    DependsOn: CodeBuildRole
+    Properties:
+      Name: !Ref ProjectName
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL  # Minimal resources
+        Image: aws/codebuild/standard:7.0  # Updated for security patches
+        PrivilegedMode: false  # CRITICAL: No Docker-in-Docker
+        EnvironmentVariables:
+          - Name: PYTHONPATH
+            Value: /tmp/validation
+          - Name: HOME
+            Value: /tmp  # Restrict home directory
+      
+      Source:
+        Type: NO_SOURCE
+        BuildSpec: |
+          version: 0.2
+          phases:
+            pre_build:
+              commands:
+                # Create restricted working directory
+                - mkdir -p /tmp/validation
+                - cd /tmp/validation
+                
+                # Download user code from S3
+                - aws s3 cp s3://$S3_BUCKET/executions/$EXECUTION_ID/input.json input.json
+                
+                # Parse input
+                - python3 -c "
+                  import json, sys, os
+                  with open('input.json', 'r') as f:
+                      data = json.load(f)
+                  
+                  # Write user code
+                  with open('solution.py', 'w') as f:
+                      f.write(data['code'])
+                  
+                  # Write tests
+                  test_content = 'from solution import *\n\n' + '\n\n'.join(data['tests'])
+                  with open('test_solution.py', 'w') as f:
+                      f.write(test_content)
+                  "
+            
+            build:
+              commands:
+                # Install pytest in isolated environment
+                - python3 -m venv venv
+                - source venv/bin/activate
+                - pip install --no-cache-dir --disable-pip-version-check pytest==7.4.0 pytest-json-report==1.5.0
+                
+                # Run tests with strict limits
+                - timeout 30s python3 -m pytest test_solution.py -v --tb=short --json-report --json-report-file=results.json || true
+                
+                # Parse results
+                - python3 -c "
+                  import json, sys
+                  try:
+                      with open('results.json', 'r') as f:
+                          pytest_results = json.load(f)
+                      
+                      results = []
+                      for test in pytest_results.get('tests', []):
+                          results.append({
+                              'name': test['nodeid'].split('::')[-1],
+                              'passed': test['outcome'] == 'passed',
+                              'error': test.get('call', {}).get('longrepr', '') if test['outcome'] == 'failed' else None
+                          })
+                      
+                      output = {'test_results': results}
+                      with open('final_results.json', 'w') as f:
+                          json.dump(output, f)
+                  
+                  except Exception as e:
+                      # Fallback for parsing errors
+                      output = {'test_results': [{'name': 'parse_error', 'passed': False, 'error': str(e)}]}
+                      with open('final_results.json', 'w') as f:
+                          json.dump(output, f)
+                  "
+            
+            post_build:
+              commands:
+                # Upload results
+                - aws s3 cp final_results.json s3://$S3_BUCKET/executions/$EXECUTION_ID/results.json
+                
+                # Clean up
+                - rm -rf /tmp/validation/*
+      
+      TimeoutInMinutes: 5  # Maximum execution time
+      
+      Artifacts:
+        Type: NO_ARTIFACTS  # We don't need build artifacts, results go to S3
+      
+      # VPC Configuration (optional - for network isolation)
+      # VpcConfig:
+      #   VpcId: !Ref VpcId
+      #   Subnets: [!Ref PrivateSubnet]
+      #   SecurityGroupIds: [!Ref SecurityGroup]
+
+  # CloudWatch Log Group with retention
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/codebuild/${ProjectName}'
+      RetentionInDays: 7
+
+Outputs:
+  ProjectName:
+    Description: 'CodeBuild project name'
+    Value: !Ref ValidationProject
+    Export:
+      Name: !Sub '${AWS::StackName}-ProjectName'
+  
+  ProjectArn:
+    Description: 'CodeBuild project ARN'
+    Value: !GetAtt ValidationProject.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-ProjectArn'
+  
+  # LogsKmsKeyId:
+  #   Description: 'KMS Key ID for log encryption'
+  #   Value: !Ref LogsKmsKey
+  #   Export:
+  #     Name: !Sub '${AWS::StackName}-LogsKmsKeyId'
