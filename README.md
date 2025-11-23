@@ -91,3 +91,61 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+## 🛠️ Operations
+
+### Daily Monitoring
+```bash
+./tools/health-check.sh   # System health
+./check-costs.sh          # Cost tracking
+```
+
+### Weekly Maintenance
+```bash
+./tools/weekly-report.sh  # Generate report
+./tools/optimize-costs.sh # Cost optimization
+```
+
+### Quick Commands
+```bash
+# View dashboard
+./tools/dashboard.sh
+
+# Test all endpoints
+./tools/e2e-test.sh
+
+# Update Lambda code
+./tools/update-lambda.sh all
+
+# Fix common issues
+./tools/fix-common-issues.sh
+```
+
+### Documentation
+- [Operations Runbook](docs/operations-runbook.md)
+- [API Documentation](docs/api-documentation.md)
+- [Authentication Flow](docs/authentication-flow.md)
+- [Lesson Creation Guide](docs/lesson-creation-guide.md)
+
+## 📈 Monitoring
+
+**CloudWatch Logs:**
+- `/aws/lambda/CodeLearn-Lesson`
+- `/aws/lambda/CodeLearn-Validation`
+- `/aws/lambda/CodeLearn-User`
+
+**Metrics:**
+- Lambda invocations
+- API Gateway requests
+- DynamoDB read/write units
+- Bedrock token usage
+
+## 🚨 Emergency Contacts
+
+**Cost Alert:** Check email for AWS Budgets notifications  
+**System Down:** Run `./tools/fix-common-issues.sh`  
+**Support:** [Your contact]
+
+## 📊 Current Status
+
+Last Updated: $(date)
+
