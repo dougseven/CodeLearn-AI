@@ -1750,15 +1750,15 @@ cat > /tmp/frontend-policy.json << EOF
 }
 EOF
 
-aws s3api put-bucket-policy \
-    --bucket $FRONTEND_BUCKET \
-    --policy file:///tmp/frontend-policy.json
-
 # Disable "Block Public Access" (needed for website hosting)
 aws s3api put-public-access-block \
     --bucket $FRONTEND_BUCKET \
     --public-access-block-configuration \
     "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false"
+
+aws s3api put-bucket-policy \
+    --bucket $FRONTEND_BUCKET \
+    --policy file:///tmp/frontend-policy.json
 
 echo "✅ Frontend bucket created and configured"
 ```
@@ -2707,6 +2707,7 @@ If stuck:
 1. Look at `variables_and_data_types.json` as an example
 2. Keep it simple - better to have working lessons than perfect ones
 3. You can always improve lessons later
+```
 ```
 
 **Save the file**
