@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="logo-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2563eb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7c3aed;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Brain icon representing AI -->
+  <circle cx="100" cy="100" r="80" fill="url(#logo-gradient)" opacity="0.1"/>
+  
+  <!-- Code brackets -->
+  <path d="M 60 70 L 40 100 L 60 130" stroke="url(#logo-gradient)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M 140 70 L 160 100 L 140 130" stroke="url(#logo-gradient)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  
+  <!-- AI spark in center -->
+  <circle cx="100" cy="100" r="12" fill="url(#logo-gradient)"/>
+  <path d="M 100 70 L 100 85" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 100 115 L 100 130" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 70 100 L 85 100" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 115 100 L 130 100" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- Text: CodeLearn -->
+  <text x="100" y="180" font-family="Arial, sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="#111827">CodeLearn</text>
+</svg>
