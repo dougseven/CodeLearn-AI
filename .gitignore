@@ -11,6 +11,11 @@ config/*-config.sh
 
 notifications.json
 
+# AI Assistants
+# ============================
+.claude
+.github/
+
 # AWS Credentials and outputs
 # ============================
 cognito-config.txt
@@ -90,9 +95,17 @@ Thumbs.db
 node_modules/
 npm-debug.log
 yarn-error.log
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
 # Testing
 # =======
+test-results/
+playwright-report/
+playwright/.cache/
+lighthouse-reports/
+reports/
 .pytest_cache/
 .coverage
 htmlcov/
