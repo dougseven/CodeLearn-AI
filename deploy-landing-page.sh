@@ -94,17 +94,20 @@ CLOUDFRONT_URL=$(aws cloudfront get-distribution \
     --query 'Distribution.DomainName' \
     --output text)
 
+CUSTOM_DOMAIN="codelearn.dougseven.com"
+
 echo ""
 echo "========================================"
 echo -e "${GREEN}🎉 Landing Page Deployed Successfully!${NC}"
 echo "========================================"
 echo ""
+echo "📍 Custom Domain: https://$CUSTOM_DOMAIN"
 echo "📍 CloudFront URL: https://$CLOUDFRONT_URL"
 echo "📦 S3 Bucket: $S3_BUCKET"
 echo "🔄 CloudFront ID: $CLOUDFRONT_ID"
 echo ""
 echo "Next steps:"
-echo "  1. Visit https://$CLOUDFRONT_URL to verify deployment"
+echo "  1. Visit https://$CUSTOM_DOMAIN to verify deployment"
 echo "  2. Test OAuth flow with Cognito"
 echo "  3. Run Lighthouse audit for performance check"
 echo "  4. Monitor CloudWatch for any errors"
